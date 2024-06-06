@@ -1,0 +1,37 @@
+{
+    "config": {
+        "id": "gex-4-1-louro-mane",
+        "name": "GEX-4-1-LOURO-MANE",
+        "contents_url": "http:\/\/ydreams-internal-dev.afteryou.pt\/",
+        "last_sync_date": "2024-06-06 00:29:10",
+        "last_contents_update": "2024-04-23 21:08:57"
+    },
+    "app": {
+        "tokens": {},
+        "contents": {
+            "GEX_4_1_louro_anitta": {
+                "pt": "contents\/contents\/louro-mane-canta-anitta.mp4",
+                "en": "contents\/contents\/louro-mane-canta-anitta.mp4",
+                "es": "contents\/contents\/louro-mane-canta-anitta.mp4"
+            },
+            "GEX_4_1_louro_juliete": {
+                "pt": "contents\/contents\/louro-mane-cantando-juliette.mp4",
+                "en": "contents\/contents\/louro-mane-cantando-juliette.mp4",
+                "es": "contents\/contents\/louro-mane-cantando-juliette.mp4"
+            },
+            "gex_4_1_louro_queen": {
+                "pt": "contents\/contents\/louro-mane-cantando-queen.mp4",
+                "en": "contents\/contents\/louro-mane-cantando-queen.mp4",
+                "es": "contents\/contents\/louro-mane-cantando-queen.mp4"
+            },
+            "GEX_4_1_louro_violino": {
+                "pt": "contents\/contents\/louro-mane-violino.mp4",
+                "en": "contents\/contents\/louro-mane-violino.mp4",
+                "es": "contents\/contents\/louro-mane-violino.mp4"
+            }
+        },
+        "advcontents": {},
+        "variables": {},
+        "configfiles": {}
+    }
+}
