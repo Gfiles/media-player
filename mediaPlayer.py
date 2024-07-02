@@ -82,8 +82,8 @@ def fnDownloadContents():
             #check media folder
             for k, v in contents.items():
                 #print(f"{k} - {v['pt']}")
-                file_name = os.path.basename(v['pt'])
-                fileName = os.path.join(mediaFolders[0], file_name).lower()
+                file_name = os.path.basename(v['pt']).lower()
+                fileName = os.path.join(mediaFolders[0], file_name)
                 print(fileName)
                 downLoading = downloadURL + v['pt']
                 print(downLoading)
@@ -146,6 +146,7 @@ numFiles = len(files)
 print(files)
 if numFiles == 0:
     running = False
+    print("No Files to play. Closing...")
 else:
     running = True
 
@@ -154,7 +155,6 @@ try:
         for file in files:
             print(file)
             fileExtension = file.suffix
-
             if fileExtension == ".mp4" or fileExtension == ".mp3":
                 if numFiles == 1:
                     videoPlayer.append("--loop")
@@ -170,5 +170,5 @@ except KeyboardInterrupt:
     print("Canceled by User")
 finally:
     # Close the serial connection to the Arduino
-    #subprocess.Popen(["pkill", videoPlayer[0]])
+    subprocess.Popen(["pkill", videoPlayer[0]])
     pass
