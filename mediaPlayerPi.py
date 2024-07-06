@@ -22,9 +22,8 @@ def readConfig(settingsFile):
             ],
             "Doc_videoPlayer" : "Video player commands for playing videos",
             "videoPlayer" : [
-                "mpv"
+                "omxplayer"
             ],
-            "loopParameter" : "--loop",
             "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png"]
         }
         # Serializing json
@@ -123,7 +122,6 @@ mediaFolders = config["mediaFolders"]
 videoPlayer = config["videoPlayer"]
 fileTypes = config["fileTypes"]
 deleteOld = config["deleteOld"]
-loopParameter = config["loopParameter"]
 
 #Check if Folders existe and create if necessary
 
@@ -151,18 +149,6 @@ if numFiles == 0:
     print("No Files to play. Closing...")
 else:
     running = True
-    #Teste if mpv Exists
-    try:
-        subprocess.run([videoPlayer[0]])
-    except FileNotFoundError:
-        if videoPlayer[0] == "mpv":
-            #install mpv
-            print("Installing mpv")
-            subprocess.run(["winget", "install", "mpv", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
-            print("Installation of MPV complete")
-        else:
-            print(f"Video Player is not installed, please install player {videoPlayer}, exiting...")
-            running = False
 
 try:
     while running:
@@ -171,7 +157,7 @@ try:
             fileExtension = file.suffix.lower()
             if fileExtension == ".mp4" or fileExtension == ".mp3":
                 if numFiles == 1:
-                    videoPlayer.append(loopParameter)
+                    videoPlayer.append("--loop")
                     videoPlayer.append(file)
                     print(f"Play Video {videoPlayer}")
                     subprocess.run(videoPlayer)
