@@ -2,8 +2,8 @@
     "config": {
         "id": "gex-4-1-louro-mane",
         "name": "GEX-4-1-LOURO-MANE",
-        "contents_url": "http:\/\/ydreams-internal-dev.afteryou.pt\/",
-        "last_sync_date": "2024-06-06 00:29:10",
+        "contents_url": "https:\/\/internaldev.ydreams.global\/",
+        "last_sync_date": "2024-07-02 00:13:50",
         "last_contents_update": "2024-04-23 21:08:57"
     },
     "app": {

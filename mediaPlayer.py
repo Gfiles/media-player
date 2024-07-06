@@ -25,6 +25,8 @@ def readConfig(settingsFile):
                 "omxplayer"
             ],
             "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png"]
+            ],
+            "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png"]
         }
         # Serializing json
         json_object = json.dumps(data, indent=4)
@@ -45,7 +47,21 @@ def delete_files_in_directory(directory_path):
     except OSError:
         print("Error occurred while deleting files.")
      
+
+def delete_files_in_directory(directory_path):
+    try:
+        files = os.listdir(directory_path)
+        for file in files:
+            file_path = os.path.join(directory_path, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        print("All files deleted successfully.")
+    except OSError:
+        print("Error occurred while deleting files.")
+     
 def fnDownloadContents():
+    if deleteOld:
+        delete_files_in_directory(mediaFolders[0])
     # Read Download.json
     downloadFile = os.path.join(cwd, "download.json")
     if os.path.isfile(downloadFile):
@@ -84,6 +100,8 @@ def fnDownloadContents():
                 #print(f"{k} - {v['pt']}")
                 file_name = os.path.basename(v['pt']).lower()
                 fileName = os.path.join(mediaFolders[0], file_name)
+                file_name = os.path.basename(v['pt']).lower()
+                fileName = os.path.join(mediaFolders[0], file_name)
                 print(fileName)
                 downLoading = downloadURL + v['pt']
                 print(downLoading)
@@ -119,7 +137,17 @@ contentsURL = config["contentsURL"]
 downloadContent = config["downloadContent"]
 downloadURL = config["downloadURL"]
 mediaFolders = config["mediaFolders"]
+mediaFolders = config["mediaFolders"]
 videoPlayer = config["videoPlayer"]
+fileTypes = config["fileTypes"]
+deleteOld = config["deleteOld"]
+
+#Check if Folders existe and create if necessary
+
+for i in range(len(mediaFolders)):
+    mediaFolders[i] = os.path.join(cwd, mediaFolders[i])
+    if not os.path.exists( mediaFolders[i]):
+        os.mkdir( mediaFolders[i])
 fileTypes = config["fileTypes"]
 deleteOld = config["deleteOld"]
 
@@ -140,6 +168,9 @@ if downloadContent:
 folder = pathlib.Path(os.path.join(cwd, mediaFolders[0]))
 #patterns = ("*.mp4", "*.mp3", "*.jpg", "*.png", "*.MP4", "*.MP3", "*.JPG", "*.PNG")
 patterns = ", ".join(fileTypes)
+folder = pathlib.Path(os.path.join(cwd, mediaFolders[0]))
+#patterns = ("*.mp4", "*.mp3", "*.jpg", "*.png", "*.MP4", "*.MP3", "*.JPG", "*.PNG")
+patterns = ", ".join(fileTypes)
 
 files = [f for f in folder.iterdir() if any(f.match(p) for p in patterns)]
 numFiles = len(files)
@@ -147,8 +178,10 @@ print(files)
 if numFiles == 0:
     running = False
     print("No Files to play. Closing...")
+    print("No Files to play. Closing...")
 else:
     running = True
+
 
 try:
     while running:
@@ -170,5 +203,6 @@ except KeyboardInterrupt:
     print("Canceled by User")
 finally:
     # Close the serial connection to the Arduino
+    subprocess.Popen(["pkill", videoPlayer[0]])
     subprocess.Popen(["pkill", videoPlayer[0]])
     pass
