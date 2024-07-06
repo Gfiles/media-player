@@ -15,12 +15,16 @@ def readConfig(settingsFile):
             "doc" : "Configuration File Description",
             "downloadContent" : False,
             "downloadURL" : "https://internaldev.ydreams.global/",
-            "contentsURL" : "https://internaldev.ydreams.global/api/v1/app-data?appid=gex-4-1-louro-mane",
-            "mediaFolder" : "media1",
+            "contentsURL" : "https://internaldev.ydreams.global/api/v1/app-data?appid=gex-8-2-estudio-jornalismo",
+            "deleteOld" : True,
+            "mediaFolders" : [
+                "media"
+            ],
             "Doc_videoPlayer" : "Video player commands for playing videos",
             "videoPlayer" : [
                 "omxplayer"
-            ]
+            ],
+            "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png"]
         }
         # Serializing json
         json_object = json.dumps(data, indent=4)
@@ -30,6 +34,17 @@ def readConfig(settingsFile):
             outfile.write(json_object)
     return data
 
+def delete_files_in_directory(directory_path):
+    try:
+        files = os.listdir(directory_path)
+        for file in files:
+            file_path = os.path.join(directory_path, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        print("All files deleted successfully.")
+    except OSError:
+        print("Error occurred while deleting files.")
+     
 def fnDownloadContents():
     # Read Download.json
     downloadFile = os.path.join(cwd, "download.json")
@@ -60,15 +75,15 @@ def fnDownloadContents():
         jsonData = json.loads(jsonGet)
         newUpdate = jsonData["config"]["last_contents_update"]
         if lastUpdate != newUpdate:
+            if deleteOld:
+                delete_files_in_directory(mediaFolders[0])
             # Download Contents
             contents = jsonData["app"]["contents"]
             #check media folder
-            if not os.path.exists(mediaFolder):
-                os.mkdir(mediaFolder)
             for k, v in contents.items():
                 #print(f"{k} - {v['pt']}")
-                file_name = os.path.basename(v['pt'])
-                fileName = os.path.join(mediaFolder, file_name).lower()
+                file_name = os.path.basename(v['pt']).lower()
+                fileName = os.path.join(mediaFolders[0], file_name)
                 print(fileName)
                 downLoading = downloadURL + v['pt']
                 print(downLoading)
@@ -103,8 +118,17 @@ config = readConfig(settingsFile)
 contentsURL = config["contentsURL"]
 downloadContent = config["downloadContent"]
 downloadURL = config["downloadURL"]
-mediaFolder = os.path.join(cwd, config["mediaFolder"])
+mediaFolders = config["mediaFolders"]
 videoPlayer = config["videoPlayer"]
+fileTypes = config["fileTypes"]
+deleteOld = config["deleteOld"]
+
+#Check if Folders existe and create if necessary
+
+for i in range(len(mediaFolders)):
+    mediaFolders[i] = os.path.join(cwd, mediaFolders[i])
+    if not os.path.exists( mediaFolders[i]):
+        os.mkdir( mediaFolders[i])
 
 # Read Download.json
 if downloadContent:
@@ -113,23 +137,24 @@ if downloadContent:
 #Play Media Files
 
 #Get list of Files with especefic File Extensions
-folder = pathlib.Path(os.path.join(cwd, mediaFolder))
-patterns = ("*.mp4", "*.mp3", "*.jpg", "*.png", "*.MP4", "*.MP3", "*.JPG", "*.PNG")
+folder = pathlib.Path(os.path.join(cwd, mediaFolders[0]))
+#patterns = ("*.mp4", "*.mp3", "*.jpg", "*.png", "*.MP4", "*.MP3", "*.JPG", "*.PNG")
+patterns = ", ".join(fileTypes)
 
 files = [f for f in folder.iterdir() if any(f.match(p) for p in patterns)]
 numFiles = len(files)
 print(files)
 if numFiles == 0:
     running = False
+    print("No Files to play. Closing...")
 else:
     running = True
-running = False
+
 try:
     while running:
         for file in files:
             print(file)
             fileExtension = file.suffix.lower()
-
             if fileExtension == ".mp4" or fileExtension == ".mp3":
                 if numFiles == 1:
                     videoPlayer.append("--loop")
@@ -145,5 +170,5 @@ except KeyboardInterrupt:
     print("Canceled by User")
 finally:
     # Close the serial connection to the Arduino
-    #subprocess.Popen(["pkill", videoPlayer[0]])
+    subprocess.Popen(["pkill", videoPlayer[0]])
     pass
