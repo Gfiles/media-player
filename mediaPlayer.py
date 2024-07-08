@@ -5,6 +5,7 @@ import requests #pip install requests
 import json
 import subprocess
 
+VERSION = "2024.07.07"
 # ---------- Functions ----------
 def readConfig(settingsFile): 
     if os.path.isfile(settingsFile):
@@ -13,6 +14,7 @@ def readConfig(settingsFile):
     else:
         data = {
             "doc" : "Configuration File Description",
+            "versionFile" : "https://apps.ydreams.global/MediaPlayer/version.txt",
             "downloadContent" : False,
             "downloadURL" : "https://internaldev.ydreams.global/",
             "contentsURL" : "https://internaldev.ydreams.global/api/v1/app-data?appid=gex-8-2-estudio-jornalismo",
@@ -97,6 +99,21 @@ def fnDownloadContents():
     else:
         print(f"http Error: {httpStatus}")
 
+def downloadVersionFile():
+    HEADERS = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:55.0) Gecko/20100101 Firefox/55.0',
+    }
+
+    #Start Downlading
+    r = requests.get(url = versionFile, headers = HEADERS)
+    httpStatus = r.status_code
+    if httpStatus == 200:
+        versionOnline = r.text
+        print(versionOnline)
+        if VERSION == versionOnline:
+            print("Media Player up to Date")
+        else:
+            print("Downloading new Version.")
 # ---------- End Functions ----------
 
 # Get the current working 
@@ -124,7 +141,10 @@ videoPlayer = config["videoPlayer"]
 fileTypes = config["fileTypes"]
 deleteOld = config["deleteOld"]
 loopParameter = config["loopParameter"]
+versionFile = config["versionFile"]
 
+#Download Version File:
+downloadVersionFile()
 #Check if Folders existe and create if necessary
 
 for i in range(len(mediaFolders)):

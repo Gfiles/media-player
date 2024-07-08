@@ -5,6 +5,7 @@ import requests #pip install requests
 import json
 import subprocess
 
+VERSION = "2024.07.06"
 # ---------- Functions ----------
 def readConfig(settingsFile): 
     if os.path.isfile(settingsFile):
@@ -13,6 +14,7 @@ def readConfig(settingsFile):
     else:
         data = {
             "doc" : "Configuration File Description",
+            "versionFile" : "https://apps.ydreams.global/MediaPlayer/RaspBerryPi/version.txt",
             "downloadContent" : False,
             "downloadURL" : "https://internaldev.ydreams.global/",
             "contentsURL" : "https://internaldev.ydreams.global/api/v1/app-data?appid=gex-8-2-estudio-jornalismo",
@@ -123,6 +125,8 @@ videoPlayer = config["videoPlayer"]
 fileTypes = config["fileTypes"]
 deleteOld = config["deleteOld"]
 
+#kill old Video player instances:
+subprocess.Popen(["pkill", videoPlayer[0]])
 #Check if Folders existe and create if necessary
 
 for i in range(len(mediaFolders)):
@@ -149,7 +153,18 @@ if numFiles == 0:
     print("No Files to play. Closing...")
 else:
     running = True
-
+    #Teste if mpv Exists
+    try:
+        subprocess.run([videoPlayer[0]])
+    except FileNotFoundError:
+        if videoPlayer[0] == "mpv":
+            #install mpv
+            print("Installing mpv")
+            subprocess.run(["sudo", "apt", "install", "mpv", "-y"])
+            print("Installation of MPV complete")
+        else:
+            print(f"Video Player is not installed, please install player {videoPlayer}, exiting...")
+            running = False
 try:
     while running:
         for file in files:
