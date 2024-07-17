@@ -24,7 +24,8 @@ def readConfig(settingsFile):
             ],
             "Doc_videoPlayer" : "Video player commands for playing videos",
             "videoPlayer" : [
-                "mpv"
+                "ffplay",
+                "-autoexit"
             ],
             "loopParameter" : "--loop",
             "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png"]
@@ -180,6 +181,12 @@ else:
             print("Installing mpv")
             subprocess.run(["winget", "install", "mpv", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
             print("Installation of MPV complete")
+        elif videoPlayer[0] == "ffplay":
+            #install mpv
+            print("Installing ffmpeg")
+            subprocess.run(["winget", "install", "ffmpeg", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
+            print("Installation of FFmpeg complete, please Restart PC to complete installation")
+            running = False
         else:
             print(f"Video Player is not installed, please install player {videoPlayer}, exiting...")
             running = False
@@ -204,5 +211,5 @@ except KeyboardInterrupt:
     print("Canceled by User")
 finally:
     # Close the serial connection to the Arduino
-    subprocess.Popen(["pkill", videoPlayer[0]])
-    pass
+    #subprocess.Popen(["pkill", videoPlayer[0]])
+    subprocess.Popen(["taskkill", "/IM", videoPlayer[0], "/F"])
