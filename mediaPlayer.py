@@ -1,11 +1,12 @@
 import pathlib
 import os
+import platform
 import sys
 import requests #pip install requests
 import json
 import subprocess
 
-VERSION = "2024.07.07"
+VERSION = 20240727
 # ---------- Functions ----------
 def readConfig(settingsFile): 
     if os.path.isfile(settingsFile):
@@ -24,8 +25,8 @@ def readConfig(settingsFile):
             ],
             "Doc_videoPlayer" : "Video player commands for playing videos",
             "videoPlayer" : [
-                "ffplay",
-                "-autoexit"
+                "mpv",
+                "-fs"
             ],
             "loopParameter" : "--loop",
             "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png"]
@@ -37,6 +38,12 @@ def readConfig(settingsFile):
         with open(settingsFile, "w") as outfile:
             outfile.write(json_object)
     return data
+
+def killProcess(processName):
+    if OS == "Windows":
+        subprocess.run(["taskkill", "/IM", processName, "/F"])
+    if OS == "Linux":
+        subprocess.run(["pkill", processName])
 
 def delete_files_in_directory(directory_path):
     try:
@@ -109,12 +116,26 @@ def downloadVersionFile():
     r = requests.get(url = versionFile, headers = HEADERS)
     httpStatus = r.status_code
     if httpStatus == 200:
-        versionOnline = r.text
-        print(versionOnline)
-        if VERSION == versionOnline:
+        versionOnline = int(r.text)
+        print(f"{VERSION} < {versionOnline}")
+        if VERSION >= versionOnline:
             print("Media Player up to Date")
         else:
             print("Downloading new Version.")
+
+def installMediaPlayer():
+    if videoPlayer[0] == "mpv":
+        #install mpv
+        print("Installing mpv")
+        if OS == "Windows":
+            subprocess.run(["winget", "install", "mpv", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
+        if OS == "Linux":
+            subprocess.run(["sudo", "apt", "install", "mpv", "-y"])
+        print("Installation of MPV complete")
+        return True
+    else:
+        print(f"Video Player is not installed, please install player {videoPlayer}, exiting...")
+        return False
 # ---------- End Functions ----------
 
 # Get the current working 
@@ -130,6 +151,8 @@ else:
     cwd = os.path.dirname(this_file)
     
 print("Current working directory:", cwd)
+OS = platform.system()
+print(OS)
 
 # Read Config File
 settingsFile = os.path.join(cwd, "config.json")
@@ -176,20 +199,7 @@ else:
     try:
         subprocess.run([videoPlayer[0]])
     except FileNotFoundError:
-        if videoPlayer[0] == "mpv":
-            #install mpv
-            print("Installing mpv")
-            subprocess.run(["winget", "install", "mpv", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
-            print("Installation of MPV complete")
-        elif videoPlayer[0] == "ffplay":
-            #install mpv
-            print("Installing ffmpeg")
-            subprocess.run(["winget", "install", "ffmpeg", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
-            print("Installation of FFmpeg complete, please Restart PC to complete installation")
-            running = False
-        else:
-            print(f"Video Player is not installed, please install player {videoPlayer}, exiting...")
-            running = False
+        running = installMediaPlayer()
 
 try:
     while running:
@@ -211,5 +221,4 @@ except KeyboardInterrupt:
     print("Canceled by User")
 finally:
     # Close the serial connection to the Arduino
-    #subprocess.Popen(["pkill", videoPlayer[0]])
-    subprocess.Popen(["taskkill", "/IM", videoPlayer[0], "/F"])
+    killProcess(videoPlayer[0])
