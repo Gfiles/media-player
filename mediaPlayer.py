@@ -5,8 +5,11 @@ import sys
 import requests #pip install requests
 import json
 import subprocess
+import serial
+import serial.tools.list_ports
+import time
 
-VERSION = 20240727
+VERSION = 20240730
 # ---------- Functions ----------
 def readConfig(settingsFile): 
     if os.path.isfile(settingsFile):
@@ -20,16 +23,20 @@ def readConfig(settingsFile):
             "downloadURL" : "https://internaldev.ydreams.global/",
             "contentsURL" : "https://internaldev.ydreams.global/api/v1/app-data?appid=gex-8-2-estudio-jornalismo",
             "deleteOld" : True,
-            "mediaFolders" : [
-                "media"
-            ],
+            "mediaFolder" : "media",
             "Doc_videoPlayer" : "Video player commands for playing videos",
             "videoPlayer" : [
-                "mpv",
-                "-fs"
+                "omxplayer"
             ],
             "loopParameter" : "--loop",
-            "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png"]
+            "layerParameter" : "--layer",
+            "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png", "*.wav"],
+            "useSerial" : False,
+            "numButtons" : 3,
+            "interuptVideo" : false,
+            "uart" : "auto",
+            "baudrate" : 9600,
+            "usbName" : "USB"
         }
         # Serializing json
         json_object = json.dumps(data, indent=4)
@@ -117,7 +124,7 @@ def downloadVersionFile():
     httpStatus = r.status_code
     if httpStatus == 200:
         versionOnline = int(r.text)
-        print(f"{VERSION} < {versionOnline}")
+        #print(f"{VERSION} < {versionOnline}")
         if VERSION >= versionOnline:
             print("Media Player up to Date")
         else:
@@ -136,6 +143,22 @@ def installMediaPlayer():
     else:
         print(f"Video Player is not installed, please install player {videoPlayer}, exiting...")
         return False
+
+def getFiles(myFolder):
+    folder = pathlib.Path(os.path.join(cwd, myFolder))
+    #patterns = ("*.mp4", "*.mp3", "*.jpg", "*.png", "*.MP4", "*.MP3", "*.JPG", "*.PNG")
+    patterns = ", ".join(fileTypes)
+
+    files = [f for f in folder.iterdir() if any(f.match(p) for p in patterns)]
+    numFiles = len(files)
+    #print(files)
+    if numFiles == 0:
+        running = False
+        print("No Files to play. Closing...")
+    else:
+        running = True
+    return files, running
+    
 # ---------- End Functions ----------
 
 # Get the current working 
@@ -152,29 +175,70 @@ else:
     
 print("Current working directory:", cwd)
 OS = platform.system()
-print(OS)
+#print(OS)
 
 # Read Config File
 settingsFile = os.path.join(cwd, "config.json")
-config = readConfig(settingsFile)
-contentsURL = config["contentsURL"]
-downloadContent = config["downloadContent"]
-downloadURL = config["downloadURL"]
-mediaFolders = config["mediaFolders"]
-videoPlayer = config["videoPlayer"]
-fileTypes = config["fileTypes"]
-deleteOld = config["deleteOld"]
-loopParameter = config["loopParameter"]
-versionFile = config["versionFile"]
+try:
+    config = readConfig(settingsFile)
+    contentsURL = config["contentsURL"]
+    downloadContent = config["downloadContent"]
+    downloadURL = config["downloadURL"]
+    mediaFolder = config["mediaFolder"]
+    videoPlayer = config["videoPlayer"]
+    fileTypes = config["fileTypes"]
+    deleteOld = config["deleteOld"]
+    loopParameter = config["loopParameter"]
+    versionFile = config["versionFile"]
+    numButtons = config["numButtons"]
+    baudrate = config["baudrate"]
+    uart = config["uart"]
+    useSerial = config["useSerial"]
+    usbName = config["usbName"]
+    layerParameter = config["layerParameter"]
+    interuptVideo = config["interuptVideo"]
+except:
+    print("Error Opening config.json, please delete file and start again")
+    time.sleep(5)
+    exit()
 
 #Download Version File:
 downloadVersionFile()
 #Check if Folders existe and create if necessary
 
-for i in range(len(mediaFolders)):
-    mediaFolders[i] = os.path.join(cwd, mediaFolders[i])
-    if not os.path.exists( mediaFolders[i]):
-        os.mkdir( mediaFolders[i])
+#check for folders and create if necessary
+mediaFolders = []
+mediaFolders.append(os.path.join(cwd, mediaFolder))
+
+# setup Seiral
+print(useSerial)
+if useSerial:
+    try:
+        if uart == "auto":
+            ports = list(serial.tools.list_ports.comports())
+            #print(ports)
+            for p in ports:
+                if usbName in p.description:
+                    uart = p.device
+
+        ser = serial.Serial(
+                # Serial Port to read the data from
+                port = uart,
+                #Rate at which the information is shared to the communication channel
+                baudrate = baudrate,
+                # Number of serial commands to accept before timing out
+                timeout=1
+        )
+        
+        for i in range(numButtons):
+            mediaFolders.append(os.path.join(cwd, f"{mediaFolder}{i+1}"))
+        for i in range(len(mediaFolders)):
+            if not os.path.exists( mediaFolders[i]):
+                os.mkdir( mediaFolders[i])
+    except Exception as error:
+        print(error)
+        print("No Serial")
+        useSerial = False
 
 # Read Download.json
 if downloadContent:
@@ -183,40 +247,78 @@ if downloadContent:
 #Play Media Files
 
 #Get list of Files with especefic File Extensions
-folder = pathlib.Path(os.path.join(cwd, mediaFolders[0]))
-#patterns = ("*.mp4", "*.mp3", "*.jpg", "*.png", "*.MP4", "*.MP3", "*.JPG", "*.PNG")
-patterns = ", ".join(fileTypes)
-
-files = [f for f in folder.iterdir() if any(f.match(p) for p in patterns)]
-numFiles = len(files)
-print(files)
-if numFiles == 0:
-    running = False
-    print("No Files to play. Closing...")
+if useSerial:
+    mediaBtns = []
+    for folder in mediaFolders:
+        files, running = getFiles(pathlib.Path(os.path.join(cwd, folder)))
+        mediaBtns.append(files[0])
+    #print(f"mediaFiles: {mediaBtns}")
 else:
-    running = True
+    folder = pathlib.Path(os.path.join(cwd, mediaFolders[0]))
+    files, running = getFiles(mediaFolders[0])
+
+if running:
     #Teste if mpv Exists
     try:
-        subprocess.run([videoPlayer[0]])
+        videoPlaying = subprocess.Popen([videoPlayer[0]], stdout = subprocess.DEVNULL) #do not show output
+        videoPlaying.wait()
     except FileNotFoundError:
         running = installMediaPlayer()
+    
+    #play Loop Video
+    if useSerial:
+        #play video in Loop
+        print(videoPlayer)
+        videoLoop = videoPlayer.copy()
+        videoLoop.append(loopParameter)
+        videoLoop.append(str(mediaBtns[0]))
+        print(f"Play Video loop {videoLoop}")
+        subprocess.Popen(videoLoop)
+        #Read Serial Buttons
 
 try:
     while running:
-        for file in files:
-            print(file)
-            fileExtension = file.suffix.lower()
-            if fileExtension == ".mp4" or fileExtension == ".mp3":
-                if numFiles == 1:
-                    videoPlayer.append(loopParameter)
-                    videoPlayer.append(file)
-                    print(f"Play Video {videoPlayer}")
-                    subprocess.run(videoPlayer)
+        if useSerial:
+            #Read Serial Buttons
+            x = ser.readline().strip().decode()
+            if len(x) > 0:
+                try:
+                    btnIn = int(x)
+                    print(btnIn)
+                    videoBtn = videoPlayer.copy()
+                    videoBtn.append(layerParameter)
+                    videoBtn.append('10')
+                    videoBtn.append(mediaBtns[btnIn+1])
+                    print(f"Play Video {videoBtn}")
+                    if (not interuptVideo) and (videoPlaying.poll() == 0):
+                        videoPlaying = subprocess.Popen(videoBtn)
+                    else:
+                        #print(videoPlaying.poll())
+                        if videoPlaying.poll() == None:
+                            videoPlaying.terminate() #not Working
+                            videoPlaying.flush()
+                            videoPlaying.wait()
+                        videoPlaying = subprocess.Popen(videoBtn, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                        #print(f"pid: {videoPlaying.pid}")
+                except:
+                    pass
+        else:
+            for file in files:
+                fileExtension = file.suffix.lower()
+                if fileExtension == ".jpg" or fileExtension == ".png":
+                    print("Play Image")
+                    
                 else:
-                    videoPlayer.append(file)
-                    subprocess.run(videoPlayer)
-            elif fileExtension == ".jpg" or fileExtension == ".png":
-                print("Play Image")
+                    numFiles = len(files)
+                    if numFiles == 1:
+                        videoPlayer.append(loopParameter)
+                        videoPlayer.append(file)
+                        print(f"Play Video {videoPlayer}")
+                        subprocess.run(videoPlayer)
+                    else:
+                        videoPlayer.append(file)
+                        subprocess.run(videoPlayer)
+                        
 except KeyboardInterrupt:
     print("Canceled by User")
 finally:
