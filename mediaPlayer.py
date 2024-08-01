@@ -9,7 +9,7 @@ import serial
 import serial.tools.list_ports
 import time
 
-VERSION = 20240730
+VERSION = 20240801
 # ---------- Functions ----------
 def readConfig(settingsFile): 
     if os.path.isfile(settingsFile):
@@ -29,11 +29,10 @@ def readConfig(settingsFile):
                 "omxplayer"
             ],
             "loopParameter" : "--loop",
-            "layerParameter" : "--layer",
             "fileTypes" : ["*.mp4", "*.mp3", "*.jpg", "*.png", "*.wav"],
             "useSerial" : False,
             "numButtons" : 3,
-            "interuptVideo" : false,
+            "interuptVideo" : False,
             "uart" : "auto",
             "baudrate" : 9600,
             "usbName" : "USB"
@@ -158,7 +157,11 @@ def getFiles(myFolder):
     else:
         running = True
     return files, running
-    
+
+def getBackground():
+    subprocess.Popen(["sudo", "apt", "install", "feh", "-y"], stdout = subprocess.DEVNULL)
+    subprocess.run(["ffmpeg", "-y", "-i", mediaBtns[0], "-vf", 'select=1', "-vframes", "1", "-loglevel", "quiet", "background.png"], stdout = subprocess.DEVNULL)
+    subprocess.Popen(["feh", "-F", "--hide-pointer", "background.png"])
 # ---------- End Functions ----------
 
 # Get the current working 
@@ -195,7 +198,6 @@ try:
     uart = config["uart"]
     useSerial = config["useSerial"]
     usbName = config["usbName"]
-    layerParameter = config["layerParameter"]
     interuptVideo = config["interuptVideo"]
 except:
     print("Error Opening config.json, please delete file and start again")
@@ -267,18 +269,24 @@ if running:
     
     #play Loop Video
     if useSerial:
+        if OS == "Linux":
+            getBackground()
         #play video in Loop
         print(videoPlayer)
         videoLoop = videoPlayer.copy()
         videoLoop.append(loopParameter)
         videoLoop.append(str(mediaBtns[0]))
         print(f"Play Video loop {videoLoop}")
-        subprocess.Popen(videoLoop)
-        #Read Serial Buttons
-
+        loopVideo = subprocess.Popen(videoLoop)
+        #open Image in fullscreen
+        
 try:
     while running:
         if useSerial:
+            #print(f"videoPlaying = {videoPlaying.poll()}, loopVideo = {loopVideo.poll()}") 
+            if (videoPlaying.poll() != None) and (loopVideo.poll() != None):
+                print(f"Play Video loop {videoLoop}")
+                loopVideo = subprocess.Popen(videoLoop)
             #Read Serial Buttons
             x = ser.readline().strip().decode()
             if len(x) > 0:
@@ -286,20 +294,13 @@ try:
                     btnIn = int(x)
                     print(btnIn)
                     videoBtn = videoPlayer.copy()
-                    videoBtn.append(layerParameter)
-                    videoBtn.append('10')
                     videoBtn.append(mediaBtns[btnIn+1])
                     print(f"Play Video {videoBtn}")
-                    if (not interuptVideo) and (videoPlaying.poll() == 0):
+                    if (interuptVideo) or (videoPlaying.poll() != None):
+                        #time.sleep(1)
+                        print(f"Play Video {videoBtn}")
+                        killProcess(videoPlayer[0])
                         videoPlaying = subprocess.Popen(videoBtn)
-                    else:
-                        #print(videoPlaying.poll())
-                        if videoPlaying.poll() == None:
-                            videoPlaying.terminate() #not Working
-                            videoPlaying.flush()
-                            videoPlaying.wait()
-                        videoPlaying = subprocess.Popen(videoBtn, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                        #print(f"pid: {videoPlaying.pid}")
                 except:
                     pass
         else:
@@ -324,3 +325,4 @@ except KeyboardInterrupt:
 finally:
     # Close the serial connection to the Arduino
     killProcess(videoPlayer[0])
+    killProcess("feh")
