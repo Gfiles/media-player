@@ -2,9 +2,9 @@
 """
 Raspberry Pinout https://www.raspberrypi.com/documentation/computers/images/GPIO-Pinout-Diagram-2.png?hash=df7d7847c57a1ca6d5b2617695de6d46
 
-  29,  27,   25, 23,   21, 19,   17, 15
-W-Or,  Or, W-Gr, Bl, W-Bl, Gr, W-Br, Br 
- LED,    ,  Gnd,   ,  Btn,   , 3.3V, 
+  29, 27,   25, 23,   21, 19,   17, 15
+W-Or, Or, W-Gr, Bl, W-Bl, Gr, W-Br, Br 
+ LED,   ,  Gnd,   ,  Btn,   , 3.3V,
 
 https://raspberrypihq.com/use-a-push-button-with-raspberry-pi-gpio/
 """
@@ -12,6 +12,7 @@ import subprocess
 import json
 import os
 import sys
+import time
 import requests #pip install requests
 import RPi.GPIO as GPIO
 
@@ -22,7 +23,7 @@ def readConfig(settingsFile):
     else:
         data = {
             "config": {
-                "id": "la-fontaine-03-galo-raposa",
+                "id": "la-fontaine-09-sala-leitura",
                 "contents_url": "https:\/\/internaldev.ydreams.global\/",
                 "last_contents_update": 0
             }
@@ -88,6 +89,7 @@ def downloadContents(settingsFile):
 
 # Get the current working
 # directory (CWD)
+killProcess('omxplayer')
 try:
     this_file = __file__
 except NameError:
@@ -114,13 +116,21 @@ config = downloadContents(os.path.join(cwd, "appconfig.json"))
 try:
     btnPin = int(config["app"]["variables"]["btnPin"])
     ledPin = int(config["app"]["variables"]["ledPin"])
-    restartAudio = int(config["app"]["variables"]["restartVideo"])
-    timeRestart = int(config["app"]["variables"]["timeRestart"])
 except:
     print("missing variable")
     btnPin = 21
-    ledPin = 29
+    ledPin = 13
 
+try:
+    rotate = config["app"]["variables"]["rotate"]
+except:
+    rotate = '0'
+
+try:
+    audioOut = config["app"]["variables"]["audioOut"]
+except:
+    audioOut = 'hdmi'
+    
 try:
     #check media folder
     contents = config["app"]["contents"]
@@ -138,12 +148,22 @@ except:
     print("Error Reading JSON File")
     exit()
 print(fileNames)
-subprocess.Popen(['omxplayer', '--loop', fileNames[0]])
+videoPlayer = ["omxplayer", "-o", audioOut, "--orientation", rotate]
+#Create Loop video Session
+videoPlayerLoop = videoPlayer.copy()
+videoPlayerLoop.append("--loop")
+videoPlayerLoop.append(fileNames[0])
+subprocess.Popen(videoPlayerLoop)
+#Create Video Play Session
+videoPlayer.append("--layer")
+videoPlayer.append("10")
+videoPlayer.append(fileNames[1])
 
 #setup  GPIO:
 GPIO.setwarnings(False) # Ignore warning for now
 GPIO.setmode(GPIO.BOARD) # Use physical pin numbering
 GPIO.setup(btnPin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 26 to be an input pin and set initial value to be pulled up (high)
+GPIO.setup(ledPin, GPIO.OUT, initial=GPIO.HIGH)
 
 print("Ready")
 running = True
@@ -153,7 +173,7 @@ try:
         if GPIO.input(btnPin) == GPIO.HIGH:
             GPIO.output(ledPin,GPIO.LOW)
             print("Button was pushed!")
-            subprocess.run(['omxplayer', fileNames[1]])
+            subprocess.run(videoPlayer)
             GPIO.output(ledPin,GPIO.HIGH)
 
 except KeyboardInterrupt:
