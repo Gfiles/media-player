@@ -12,7 +12,6 @@ import subprocess
 import json
 import os
 import sys
-import time
 import requests #pip install requests
 import RPi.GPIO as GPIO
 
