@@ -152,6 +152,8 @@ videoPlayer = ["omxplayer", "-o", audioOut, "--orientation", rotate]
 #Create Loop video Session
 videoPlayerLoop = videoPlayer.copy()
 videoPlayerLoop.append("--loop")
+videoPlayerLoop.append("--layer")
+videoPlayerLoop.append("2") # bring video above the Cursor
 videoPlayerLoop.append(fileNames[0])
 subprocess.Popen(videoPlayerLoop)
 #Create Video Play Session
