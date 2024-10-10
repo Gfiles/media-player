@@ -12,7 +12,6 @@ import subprocess
 import json
 import os
 import sys
-import time
 import requests #pip install requests
 import RPi.GPIO as GPIO
 
@@ -23,7 +22,7 @@ def readConfig(settingsFile):
     else:
         data = {
             "config": {
-                "id": "la-fontaine-09-sala-leitura",
+                "id": "la-fontaine-01-raposa-uvas",
                 "contents_url": "https:\/\/internaldev.ydreams.global\/",
                 "last_contents_update": 0
             }
@@ -114,24 +113,6 @@ config = downloadContents(os.path.join(cwd, "appconfig.json"))
 #id = config["config"]["id"]
 
 try:
-    btnPin = int(config["app"]["variables"]["btnPin"])
-    ledPin = int(config["app"]["variables"]["ledPin"])
-except:
-    print("missing variable")
-    btnPin = 21
-    ledPin = 13
-
-try:
-    rotate = config["app"]["variables"]["rotate"]
-except:
-    rotate = '0'
-
-try:
-    audioOut = config["app"]["variables"]["audioOut"]
-except:
-    audioOut = 'hdmi'
-    
-try:
     #check media folder
     contents = config["app"]["contents"]
     #check media folder
@@ -147,6 +128,27 @@ try:
 except:
     print("Error Reading JSON File")
     exit()
+
+if len(fileNames) > 1:
+    try:
+        btnPin = int(config["app"]["variables"]["btnPin"])
+        ledPin = int(config["app"]["variables"]["ledPin"])
+    except:
+        print("missing variable")
+        btnPin = 21
+        ledPin = 13
+
+try:
+    rotate = config["app"]["variables"]["rotate"]
+except:
+    rotate = '0'
+
+try:
+    audioOut = config["app"]["variables"]["audioOut"]
+except:
+    audioOut = 'hdmi'
+
+
 print(fileNames)
 videoPlayer = ["omxplayer", "-o", audioOut, "--orientation", rotate]
 #Create Loop video Session
@@ -155,7 +157,11 @@ videoPlayerLoop.append("--loop")
 videoPlayerLoop.append("--layer")
 videoPlayerLoop.append("2") # bring video above the Cursor
 videoPlayerLoop.append(fileNames[0])
-subprocess.Popen(videoPlayerLoop)
+if len(fileNames) == 1:
+    subprocess.run(videoPlayerLoop)
+else:
+    subprocess.Popen(videoPlayerLoop)
+
 #Create Video Play Session
 videoPlayer.append("--layer")
 videoPlayer.append("10")
