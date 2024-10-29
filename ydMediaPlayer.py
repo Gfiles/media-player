@@ -167,8 +167,6 @@ except:
     sys.exit()
 
 print(fileNames)
-if OS == "Linux":
-    getBackground()
 #Create Loop video Session
 videoPlayerLoop = videoPlayer.copy()
 videoPlayerLoop.append("--loop")
@@ -177,6 +175,8 @@ if len(fileNames) == 1:
     subprocess.run(videoPlayerLoop)
     sys.exit()
 else:
+    if OS == "Linux":
+        getBackground()
     running = True
 
 #Teste if mpv Exists
