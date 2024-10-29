@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 config.json
+appconfig.json
 download.json
 media1/
 media/

@@ -159,6 +159,7 @@ videoPlayerLoop.append("2") # bring video above the Cursor
 videoPlayerLoop.append(fileNames[0])
 if len(fileNames) == 1:
     subprocess.run(videoPlayerLoop)
+    sys.exit()
 else:
     subprocess.Popen(videoPlayerLoop)
 
