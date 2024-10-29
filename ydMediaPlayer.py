@@ -133,8 +133,7 @@ print("Current working directory:", cwd)
 OS = platform.system()
 killProcess('mpv')
 
-if OS == "Linux":
-    getBackground()
+
 #check for folders and create if necessary
 mediaFolder = os.path.join(cwd, "contents")
 if not os.path.exists(mediaFolder):
@@ -168,6 +167,8 @@ except:
     sys.exit()
 
 print(fileNames)
+if OS == "Linux":
+    getBackground()
 #Create Loop video Session
 videoPlayerLoop = videoPlayer.copy()
 videoPlayerLoop.append("--loop")
