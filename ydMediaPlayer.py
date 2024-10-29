@@ -145,7 +145,7 @@ config = downloadContents(os.path.join(cwd, "appconfig.json"))
 #contents_url = config["config"]["contents_url"]
 #id = config["config"]["id"]
 try:
-    videoPlayer = config["app"]["variables"]["videPlayer"]
+    videoPlayer = config["app"]["variables"]["videoPlayer"]
 except:
     videoPlayer = ["mpv", "-fs"]
 
