@@ -25,6 +25,8 @@ def readConfig(settingsFile):
         # Writing to config.json
         with open(settingsFile, "w") as outfile:
             outfile.write(json_object)
+        if OS == "Linux":
+            subprocess.Popen(["sudo", "apt", "install", "feh", "-y"], stdout = subprocess.DEVNULL)
     return data
 
 def killProcess(processName):
@@ -34,7 +36,6 @@ def killProcess(processName):
         subprocess.run(["pkill", processName])
 
 def getBackground():
-    subprocess.Popen(["sudo", "apt", "install", "feh", "-y"], stdout = subprocess.DEVNULL)
     subprocess.run(["ffmpeg", "-y", "-i", fileNames[0], "-vf", 'select=1', "-vframes", "1", "-loglevel", "quiet", "background.png"], stdout = subprocess.DEVNULL)
     subprocess.Popen(["feh", "-F", "--hide-pointer", "background.png"])
     
@@ -108,10 +109,9 @@ def downloadContents(settingsFile):
                     with open(fileName, mode="wb") as file:
                         file.write(response.content)
                     lastUpdate = newUpdate
-
-            print("Finished Downloading")
         else:
             print("media up to date")
+        print("Finished Downloading")
     else:
         print(f"http Error: {httpStatus}")
     return jsonData
