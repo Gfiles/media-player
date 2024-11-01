@@ -25,8 +25,6 @@ def readConfig(settingsFile):
         # Writing to config.json
         with open(settingsFile, "w") as outfile:
             outfile.write(json_object)
-        if OS == "Linux":
-            subprocess.Popen(["sudo", "apt", "install", "feh", "-y"], stdout = subprocess.DEVNULL)
     return data
 
 def killProcess(processName):
@@ -37,7 +35,7 @@ def killProcess(processName):
 
 def getBackground():
     subprocess.run(["ffmpeg", "-y", "-i", fileNames[0], "-vf", 'select=1', "-vframes", "1", "-loglevel", "quiet", "background.png"], stdout = subprocess.DEVNULL)
-    subprocess.Popen(["feh", "-F", "--hide-pointer", "background.png"])
+    subprocess.Popen(["mpv", "-fs", "--loop", "background.png"])
     
 def installMediaPlayer():
     if videoPlayer[0] == "mpv":
@@ -52,7 +50,13 @@ def installMediaPlayer():
     else:
         print(f"Video Player is not installed, please install player {videoPlayer}, exiting...")
         return False
-    
+
+def installFFmpeg():
+    if OS == "Windows":
+        subprocess.run(["winget", "install", "ffmpeg"])
+    print("Installation of ffmpeg complete")
+    return True
+ 
 def downloadVersionFile():
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:55.0) Gecko/20100101 Firefox/55.0',
@@ -145,10 +149,13 @@ config = downloadContents(os.path.join(cwd, "appconfig.json"))
 #contents_url = config["config"]["contents_url"]
 #id = config["config"]["id"]
 try:
-    videoPlayer = list()
-    videoPlayer.append(config["app"]["variables"]["videoPlayer"])
-except:
-    videoPlayer = ["mpv", "-fs"]
+    videoPlayerGet = config["app"]["variables"]["videoPlayer"]
+    videoPlayer = videoPlayerGet.split()
+except Exception as error:
+    if OS == "windows":
+        videoPlayer = ["mpv", "-fs"]
+    if OS == "Linux":
+        videoPlayer = ["cvlc", "-f", "--no-osd"]
 
 try:
     #check media folder
@@ -186,6 +193,13 @@ try:
     videoPlaying.wait()
 except FileNotFoundError:
     running = installMediaPlayer()
+
+#Teste if ffmpeg Exists
+try:
+    ffmpegTest = subprocess.Popen(["ffmpeg"], stdout = subprocess.DEVNULL) #do not show output
+    ffmpegTest.wait()
+except FileNotFoundError:
+    running = installFFmpeg()
     
 print("Ready")
 try:
@@ -197,5 +211,4 @@ try:
 
 except KeyboardInterrupt:
     killProcess(videoPlayer[0])
-    if OS == "Linux":
-         killProcess("feh")
+    killProcess("mpv")
