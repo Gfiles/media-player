@@ -14,7 +14,7 @@ def readConfig(settingsFile):
     else:
         data = {
             "config": {
-                "id": "gex-10-1-patrocinadores",
+                "id": "bob-12-lar-abacaxi",
                 "contents_url": "https:\/\/internaldev.ydreams.global\/",
                 "last_contents_update": 0
             }
@@ -152,10 +152,18 @@ try:
     videoPlayerGet = config["app"]["variables"]["videoPlayer"]
     videoPlayer = videoPlayerGet.split()
 except Exception as error:
-    if OS == "windows":
+    print(f"Exception error: {error}, {OS}")
+    if OS == "Windows":
         videoPlayer = ["mpv", "-fs"]
     if OS == "Linux":
         videoPlayer = ["cvlc", "-f", "--no-osd"]
+#print(videoPlayer)
+#Teste if mpv Exists
+try:
+    videoPlaying = subprocess.Popen([videoPlayer[0]], stdout = subprocess.DEVNULL) #do not show output
+    videoPlaying.wait()
+except FileNotFoundError:
+    running = installMediaPlayer()
 
 try:
     #check media folder
@@ -186,13 +194,6 @@ else:
     if OS == "Linux":
         getBackground()
     running = True
-
-#Teste if mpv Exists
-try:
-    videoPlaying = subprocess.Popen([videoPlayer[0]], stdout = subprocess.DEVNULL) #do not show output
-    videoPlaying.wait()
-except FileNotFoundError:
-    running = installMediaPlayer()
 
 #Teste if ffmpeg Exists
 try:
