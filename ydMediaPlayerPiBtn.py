@@ -107,7 +107,12 @@ if not os.path.exists(mediaFolder):
     os.mkdir( mediaFolder)
 
 # Config File Download
-config = downloadContents(os.path.join(cwd, "appconfig.json"))
+settingsFile = os.path.join(cwd, "appconfig.json")
+try:
+    config = downloadContents(settingsFile)
+except:
+    config = readConfig(settingsFile)
+    print("Internet Error")
 #print(config)
 #contents_url = config["config"]["contents_url"]
 #id = config["config"]["id"]
