@@ -6,7 +6,7 @@ import sys
 import requests #pip install requests
 import platform
 
-VERSION = 20241029
+VERSION = 20241125
 def readConfig(settingsFile):
     if os.path.isfile(settingsFile):
         with open(settingsFile) as json_file:
@@ -35,7 +35,7 @@ def killProcess(processName):
 
 def getBackground():
     subprocess.run(["ffmpeg", "-y", "-i", fileNames[0], "-vf", 'select=1', "-vframes", "1", "-loglevel", "quiet", "background.png"], stdout = subprocess.DEVNULL)
-    subprocess.Popen(["mpv", "-fs", "--loop", "background.png"])
+    return os.path.join(mediaFolder, "background.png")
     
 def installMediaPlayer():
     if videoPlayer[0] == "mpv":
@@ -175,10 +175,14 @@ try:
     contents = config["app"]["contents"]
     #check media folder
     fileNames = []
+    backGroundFile = ""
     for item in contents:
         #print(item)
         for k, files in contents[item].items():
-            fileNames.append(os.path.join(mediaFolder, os.path.basename(files)))
+            if item == "backGround":
+                backGroundFile = os.path.join(mediaFolder, os.path.basename(files))
+            else:
+                fileNames.append(os.path.join(mediaFolder, os.path.basename(files)))
             break
     #print(fileName)
     running = True
@@ -196,8 +200,9 @@ if len(fileNames) == 1:
     subprocess.run(videoPlayerLoop)
     sys.exit()
 else:
-    if OS == "Linux":
-        getBackground()
+    if backGroundFile == "":
+        backGroundFile = getBackground()
+    subprocess.Popen(["mpv", "-fs", "--loop", backGroundFile])
     running = True
 
 #Teste if ffmpeg Exists
