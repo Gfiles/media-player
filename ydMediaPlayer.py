@@ -1,4 +1,11 @@
 #!/usr/bin/python3
+"""
+Media File Keys:
+    backGround -> Background media
+BackOffice Variables:
+    videoPlayer -> video player settings with parameters Ex: mpv -fs
+    
+"""
 import subprocess
 import json
 import os
