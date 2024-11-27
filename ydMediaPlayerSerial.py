@@ -185,7 +185,7 @@ try:
                 btnIn = int(x)
             except:
                 btnIn = "" 
-            if btnIn == 1:
+            if btnIn == 0:
                 print("Button was pushed!")
                 killProcess(videoPlayer[0])
                 subprocess.Popen(videoPlayer)
