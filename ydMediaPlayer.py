@@ -4,6 +4,9 @@ Media File Keys:
     backGround -> Background media
 BackOffice Variables:
     videoPlayer -> video player settings with parameters Ex: mpv -fs
+    mpv -fs --loop
+    cvlc -f --loop
+    ffplay -fs -loop 0
     
 """
 import subprocess
@@ -13,7 +16,7 @@ import sys
 import requests #pip install requests
 import platform
 
-VERSION = 20241125
+VERSION = 20250317
 def readConfig(settingsFile):
     if os.path.isfile(settingsFile):
         with open(settingsFile) as json_file:
@@ -21,7 +24,7 @@ def readConfig(settingsFile):
     else:
         data = {
             "config": {
-                "id": "bob-12-lar-abacaxi",
+                "id": "ydreams-video",
                 "contents_url": "https:\/\/internaldev.ydreams.global\/",
                 "last_contents_update": 0
             }
@@ -38,7 +41,10 @@ def killProcess(processName):
     if OS == "Windows":
         subprocess.run(["taskkill", "/IM", processName, "/F"])
     if OS == "Linux":
-        subprocess.run(["pkill", processName])
+        if processName == "cvlc":
+            subprocess.run(["pkill", "vlc"])
+        else:
+            subprocess.run(["pkill", processName])
 
 def getBackground():
     subprocess.run(["ffmpeg", "-y", "-i", fileNames[0], "-vf", 'select=1', "-vframes", "1", "-loglevel", "quiet", "background.png"], stdout = subprocess.DEVNULL)
@@ -170,12 +176,13 @@ except Exception as error:
     if OS == "Linux":
         videoPlayer = ["cvlc", "-f", "--no-osd"]
 #print(videoPlayer)
+
 #Teste if mpv Exists
-try:
-    videoPlaying = subprocess.Popen([videoPlayer[0]], stdout = subprocess.DEVNULL) #do not show output
-    videoPlaying.wait()
-except FileNotFoundError:
-    running = installMediaPlayer()
+if videoPlayer[0] == "mpv":
+	try:
+		videoPlaying = subprocess.run([videoPlayer[0]], stdout = subprocess.DEVNULL) #do not show output
+	except FileNotFoundError:
+		running = installMediaPlayer()
 
 try:
     #check media folder
@@ -201,7 +208,11 @@ except:
 print(fileNames)
 #Create Loop video Session
 videoPlayerLoop = videoPlayer.copy()
-videoPlayerLoop.append("--loop")
+if videoPlayer == "ffplay":
+    videoPlayerLoop.append("-loop")
+    videoPlayerLoop.append("0")
+else:
+    videoPlayerLoop.append("--loop")
 videoPlayerLoop.append(fileNames[0])
 if len(fileNames) == 1:
     subprocess.run(videoPlayerLoop)
@@ -225,6 +236,7 @@ try:
         for videoFile in fileNames:
             videoPlay = videoPlayer.copy()
             videoPlay.append(videoFile)
+            print(videoPlay)
             subprocess.run(videoPlay)
 
 except KeyboardInterrupt:
