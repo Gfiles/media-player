@@ -133,6 +133,31 @@ def downloadContents(settingsFile):
         print(f"http Error: {httpStatus}")
     return jsonData
 
+def check_file_type(file_path):
+    # Guess the MIME type
+    mime_type, _ = mimetypes.guess_type(file_path)
+    #print(f"mime_type {mime_type} of {file_path}")
+    if mime_type:
+        if mime_type.startswith('audio'):
+            return "audioFile"
+        elif mime_type.startswith('video'):
+            return "videoFile"
+        else:
+            return "This file is neither audio nor video."
+    else:
+        return "Could not determine the file type."
+
+def find_all(a_str, sub):
+    start = 0
+    while True:
+        start = a_str.find(sub, start)
+        if start == -1:
+            return
+        yield start
+        start += len(sub)
+
+#---------- End Functions --------------
+
 # Get the current working
 # directory (CWD)
 
@@ -148,8 +173,11 @@ else:
 
 print("Current working directory:", cwd)
 OS = platform.system()
-killProcess('mpv')
 
+if OS == "Windows":
+    killProcess("mpv.exe")
+if OS == "Linux":
+    killProcess("mpv")
 
 #check for folders and create if necessary
 mediaFolder = os.path.join(cwd, "contents")
