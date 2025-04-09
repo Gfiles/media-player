@@ -296,21 +296,19 @@ startApps = True
 try:
     while True:
         if startApps:
-            displayText(f"Playing Audio files:\n{os.path.basename(audioFiles[0])},\n{os.path.basename(audioFiles[1])},\n{os.path.basename(audioFiles[2])},\n{os.path.basename(audioFiles[3])}")
+            displayText(f"Playing Audio files:\n{audioFiles[0]}")
             for i in range(len(audioFiles)):
                 audioPlayer = audioPlayerClean.copy()
                 audioPlayer.append(f"--audio-device={wasapi[i]}")
                 audioPlayer.append(audioFiles[i])
-                print(audioPlayer)
+                displayText(f"{audioPlayer}")
                 subprocess.Popen(audioPlayer)
                 sleep(2)
 
             #cv2.destroyAllWindows()
             startApps = False
 
-        if isProcessRunning(PROCESSTOCHECK):
-            print(f"{PROCESSTOCHECK} is running.")
-        else:
+        if not isProcessRunning(PROCESSTOCHECK):
             print(f"{PROCESSTOCHECK} is not running.")
             startApps = True
 
