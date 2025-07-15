@@ -17,6 +17,7 @@ import sys
 import requests #pip install requests
 import platform
 from datetime import datetime
+import shutil
 
 VERSION = "2025.07.10"
 print(f"Version : {VERSION}")
@@ -64,10 +65,16 @@ def readConfig(settingsFile):
         with open(settingsFile) as json_file:
             data = json.load(json_file)
     else:
+        if OS == "Windows":
+            updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
+            mediaPlayer = "mpv -fs --osc=no --title=mpvPlay"
+        elif OS == "Linux":
+            updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer"
+            mediaPlayer = "cvlc -f --no-osd"
         data = {
-            "mediaPlayer": "mpv -fs --osc=no --title=mpvPlay",
+            "mediaPlayer": mediaPlayer,
             "loopCmd": "--loop",
-            "updateApp" : "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe",
+            "updateApp" : updateApp,
             "medias": [
                 {
                     "fileUrl": "https://proj.ydreams.global/ydreams/videos/bunny_1080p_30fps.mp4",
@@ -226,7 +233,10 @@ myName = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 #print(f"Script name: {myName}")
 settingsFile = f"{myName}.json"
 config = readConfig(settingsFile)
-NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
+if OS == "Windows":
+    NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
+elif OS == "Linux":
+    NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer")
 check_update()
 downloadContents()
 
