@@ -161,7 +161,6 @@ def downloadContents():
     medias = config.get("medias", [])
     
     for media in medias:
-        print(media)
         mediaurl = media.get("fileUrl", "")
         mediaLastModified = media.get("lastModified", "")
         mediaDate = get_modified_date(mediaurl)
@@ -174,7 +173,6 @@ def downloadContents():
         print(f"File Path: {filePath}")
             
         if mediaDate != "No Last-Modified header found." and mediaDate != mediaLastModified:
-            print(f"Media is newer than lastModified: {mediaDate} > {mediaLastModified}")
             print("Downloading Contents")
             r = requests.get(mediaurl, stream=True)
             totalSize = int(r.headers.get('content-length', 0))
@@ -276,16 +274,14 @@ if len(localMedias) == 0:
     sys.exit()
 running = True
 
-mediaPlayerLoop = mediaPlayer.copy()
-mediaPlayerLoop.append(config.get("loopCmd", "--loop"))
-
 print("Ready")
 try:
     while running:
         if localMedias == 1:
-            mediaPlayerLoop.append(localMedias[0])
-            print(mediaPlayerLoop)
-            subprocess.run(mediaPlayerLoop)
+            mediaPlayer = .append(config.get(loopCmd, "--loop"))
+            mediaPlayer.append(localMedias[0])
+            print(mediaPlayer)
+            subprocess.run(mediaPlayer)
         else:
             #play all video in in loop
             for media in localMedias:
