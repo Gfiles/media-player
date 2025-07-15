@@ -97,7 +97,7 @@ def readConfig(settingsFile):
                 subprocess.Popen([notePadProgram, settingsFile])
                 
             elif OS == "Linux":
-                subprocess.Popen(["gedit", settingsFile])
+                subprocess.Popen(["geany", settingsFile])
             print("After editing, please restart the script.")
             sys.exit(0)
     return data
