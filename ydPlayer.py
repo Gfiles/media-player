@@ -176,11 +176,16 @@ def downloadContents():
         if mediaDate != "No Last-Modified header found." and mediaDate != mediaLastModified:
             print(f"Media is newer than lastModified: {mediaDate} > {mediaLastModified}")
             print("Downloading Contents")
-            lastUpdate = mediaDate
             r = requests.get(mediaurl, stream=True)
+            totalSize = int(r.headers.get('content-length', 0))
+            downloadedSize = 0
             with open(filePath, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
+                    downloadedSize += len(chunk)
+                    done = int(50 * downloadedSize / totalSize)
+                    sys.stdout.write(f'\r[{"#" * done}{"-" * (50 - done)}] {downloadedSize / 1048576:.2f} MB / {totalSize / 1048576:.2f} MB')
+                    sys.stdout.flush()
             print(f"Downloaded {fileName} to {filePath}")
             media["lastModified"] = mediaDate
         else:
