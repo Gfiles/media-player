@@ -1,0 +1,11 @@
+{
+    "mediaPlayer": "mpv -fs --osc=no --title=mpvPlay",
+    "loopCmd": "--loop",
+    "updateApp": "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe",
+    "medias": [
+        {
+            "fileUrl": "https://proj.ydreams.global/ydreams/videos/bunny_1080p_30fps.mp4",
+            "lastModified": ""
+        }
+    ]
+}

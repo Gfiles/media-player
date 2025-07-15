@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 """
 Media File Keys:
     backGround -> Background media
@@ -88,6 +87,19 @@ def readConfig(settingsFile):
         # Writing to config.json
         with open(settingsFile, "w") as outfile:
             outfile.write(json_object)
+        print(f"Config file {settingsFile} created with default values.")
+        getInput = input("Do you want to edit the config file? (y/n): ")
+        if getInput.lower() == "y":
+            if OS == "Windows":
+                print("Opening config file in Notepad++")
+                programFiles = os.getenv("ProgramFiles", "C:\\Program Files")
+                notePadProgram = os.path.join(programFiles, "Notepad++", "notepad++.exe")
+                subprocess.Popen([notePadProgram, settingsFile])
+                
+            elif OS == "Linux":
+                subprocess.Popen(["gedit", settingsFile])
+            print("After editing, please restart the script.")
+            sys.exit(0)
     return data
 
 def killProcess(processName):
@@ -217,7 +229,7 @@ else:
 
 print("Current working directory:", cwd)
 OS = platform.system()
-
+print(f"Operating System: {OS}")
 if OS == "Windows":
     killProcess("mpv.exe")
 if OS == "Linux":
