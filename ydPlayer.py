@@ -231,7 +231,7 @@ localMedias = list()
 # Config File Download
 myName = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 #print(f"Script name: {myName}")
-settingsFile = f"{myName}.json"
+settingsFile = os.path.join(cwd, f"{myName}.json")
 config = readConfig(settingsFile)
 if OS == "Windows":
     NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
