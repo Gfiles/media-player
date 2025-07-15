@@ -19,7 +19,7 @@ import platform
 from datetime import datetime
 import shutil
 
-VERSION = "2025.07.10"
+VERSION = "2025.07.15"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -43,8 +43,8 @@ del "%~f0"
     os.startfile(bat_path)
     sys.exit(0)
 
-def check_update():
-    getFileDate = get_modified_date(NEW_APP)
+def check_update(fileURL):
+    getFileDate = get_modified_date(fileURL)
     if "An error occurred" in getFileDate or "No Last-Modified header found." in getFileDate:
         print(getFileDate)
         return
@@ -55,7 +55,7 @@ def check_update():
     print(f"New Version Date: {newVersionDT}")
     if versionDt.date() < newVersionDT.date():
         print("Update available!")
-        print(f"Download link: {NEW_APP}")
+        print(f"Download link: {fileURL}")
         download_and_replace(NEW_APP)
     else:
         print("You are using the latest version.")
@@ -149,7 +149,7 @@ def downloadContents():
     medias = config.get("medias", [])
     
     for media in medias:
-        #print(media)
+        print(media)
         mediaurl = media.get("fileUrl", "")
         mediaLastModified = media.get("lastModified", "")
         mediaDate = get_modified_date(mediaurl)
@@ -237,7 +237,7 @@ if OS == "Windows":
     NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
 elif OS == "Linux":
     NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer")
-check_update()
+check_update(NEW_APP)
 downloadContents()
 
 if OS == "Windows":
