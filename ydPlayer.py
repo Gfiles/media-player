@@ -18,7 +18,7 @@ import platform
 from datetime import datetime
 import shutil
 
-VERSION = "2025.07.15"
+VERSION = "2025.07.16"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -277,8 +277,8 @@ running = True
 print("Ready")
 try:
     while running:
-        if localMedias == 1:
-            mediaPlayer = .append(config.get(loopCmd, "--loop"))
+        if len(localMedias) == 1:
+            mediaPlayer.append(config.get("loopCmd", "--loop"))
             mediaPlayer.append(localMedias[0])
             print(mediaPlayer)
             subprocess.run(mediaPlayer)
@@ -291,4 +291,4 @@ try:
                 subprocess.run(player)
                 
 except KeyboardInterrupt:
-    killProcess(mediaPlayer)
+    killProcess(mediaPlayer[0])
