@@ -114,9 +114,14 @@ def killProcess(processName):
 def getBackground():
     
     medias = config.get("medias", [])
-    fileName = medias[0].get("fileUrl", "")
-    subprocess.run(["ffmpeg", "-y", "-i", fileName, "-vf", 'select=1', "-vframes", "1", "-loglevel", "quiet", "background.png"], stdout = subprocess.DEVNULL)
-    return os.path.join(mediaFolder, "background.png")
+    # loop through the medias to find the first video file
+    for media in localMedias:
+        if check_file_type(media) == "videoFile":
+            backGroundFile = os.path.join(mediaFolder, "background.png")
+            print(f"Creating background file: {backGroundFile} from {media}")
+            subprocess.run(["ffmpeg", "-y", "-i", media, "-ss", "00:00:01", "-vframes", "1", "-loglevel", "quiet", backGroundFile], stdout = subprocess.DEVNULL)
+            return backGroundFile
+    return None
     
 def installMediaPlayer():
     if mediaPlayer[0] == "mpv":
@@ -262,28 +267,38 @@ elif OS == "Linux":
 mediaPlayer = mediaPlayerGet.split()
 
 #Teste if mpv Exists
-if mediaPlayer[0] == "mpv":
-	try:
-		videoPlaying = subprocess.run([mediaPlayer[0]], stdout = subprocess.DEVNULL) #do not show output
-	except FileNotFoundError:
-		running = installMediaPlayer()
+try:
+	videoPlaying = subprocess.run(["mpv"], stdout = subprocess.DEVNULL) #do not show output
+except FileNotFoundError:
+	if installMediaPlayer() == False:
+		input("mpv not installed, Please install manually, exiting...")
+		sys.exit()
+
+#Teste if ffmpeg Exists
+try:
+	subprocess.run(["ffmpeg"], stdout = subprocess.DEVNULL) #do not show output
+except FileNotFoundError:
+	installFFmpeg()
 
 #check number of files
 if len(localMedias) == 0:
-    print("No media files found, exiting...")
+    input("No media files found, exiting...")
     sys.exit()
 running = True
+
+#Play background in loop
+backGroundFile = getBackground()
+if backGroundFile:
+    print(f"Background file: {backGroundFile}")
+    backGroundPlayer = ["mpv", "-fs", "--osc=no", "--loop", "--title=mpvPlay"]
+    backGroundPlayer.append(backGroundFile)
+    print(f"Media Player Command: {backGroundPlayer}")
+    subprocess.Popen(backGroundPlayer, stdout = subprocess.DEVNULL)
 
 print("Ready")
 try:
     while running:
-        if len(localMedias) == 1:
-            mediaPlayer.append(config.get("loopCmd", "--loop"))
-            mediaPlayer.append(localMedias[0])
-            print(mediaPlayer)
-            subprocess.run(mediaPlayer)
-        else:
-            #play all video in in loop
+        #play all medias in loop
             for media in localMedias:
                 player = mediaPlayer.copy()
                 player.append(media)
