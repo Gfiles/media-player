@@ -23,28 +23,43 @@ from datetime import datetime
 import shutil
 import signal
 
-VERSION = "2025.08.20"
+VERSION = "2025.08.21"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
+	global OS
 	exe_path = sys.argv[0]
 	tmp_path = exe_path + ".new"
-	print(f"Downloading update from {download_url}...")
+	print(f"Downloading update from {download_url} ...")
 	r = requests.get(download_url, stream=True)
 	with open(tmp_path, "wb") as f:
 		shutil.copyfileobj(r.raw, f)
 	print("Download complete.")
 	# Create a batch file to replace the running exe after exit
-	bat_path = exe_path + ".bat"
-	with open(bat_path, "w") as bat:
-		bat.write(f"""@echo off
+	if OS == "Windows":
+		bat_path = exe_path + ".bat"
+		with open(bat_path, "w") as bat:
+			bat.write(f"""@echo off
 ping 127.0.0.1 -n 3 > nul
 move /Y "{tmp_path}" "{exe_path}"
 start "" "{exe_path}"
 del "%~f0"
 """)
-	print("Restarting with update...")
-	os.startfile(bat_path)
+		print("Restarting with update...")
+		os.startfile(bat_path)
+
+	if OS == "Linux":
+		bat_path = exe_path + ".sh"
+		with open(bat_path, "w") as bat:
+			bat.write(f"""#!/bin/bash
+sleep 3
+mv -f "{tmp_path}" "{exe_path}"
+"./{exe_path}"
+""")
+		os.chmod(tmp_path, 0o755)
+		print("Restarting with update...")
+		os.system(f"sh {bat_path}")
+
 	sys.exit(0)
 
 def check_update(fileURL):
