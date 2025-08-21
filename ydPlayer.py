@@ -8,7 +8,9 @@ BackOffice Variables:
 	ffplay -fs -loop 0
 	aplay -l to get list of audio devices
 	aplay -Dplughw:2,0
-pyinstaller --onefile -n ydPLayer_arm64 ydPlayer.py
+.venv/bin/pyinstaller --onefile -n ydPlayer_arm64 ydPlayer.py
+pyinstaller --onefile -n ydPlayer_deb ydPlayer.py
+pyinstaller --onefile ydPlayer.py
 """
 import mimetypes
 import subprocess
