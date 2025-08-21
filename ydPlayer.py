@@ -315,6 +315,13 @@ if len(localMedias) == 0:
 	sys.exit()
 running = True
 
+#Check if File Exists and remove item if none exists
+localMediasCopy = localMedias.copy()
+localMedias = list()
+for filePath in localMediasCopy:
+	if os.path.isfile(filePath):
+		localMedias.append(filePath)
+
 #Play background in loop
 if len(localMedias) > 1:
 	backGroundFile = getBackground()
@@ -332,10 +339,10 @@ if playAllAtOnce:
 	players = list()
 	for media in localMedias:
 		player = mediaPlayer.copy()
-		players.append(player.append(media))
+		player.append(media)
+		players.append(player)
 		print(player)
 		multiPlayers.append(subprocess.Popen(player))
-
 print("Ready")
 while running:
 	#play all medias in loop
