@@ -71,7 +71,7 @@ def readConfig(settingsFile):
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
 			mediaPlayer = "mpv -fs --osc=no --title=mpvPlay"
 		elif OS == "Linux":
-			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer"
+			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
 			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
 		data = {
 			"mediaPlayer": mediaPlayer,
