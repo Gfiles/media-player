@@ -1,0 +1,31 @@
+{
+    "uart": "auto",
+    "useSerial": true,
+    "baudrate": 9600,
+    "usbName": "CH340",
+    "arduinoDriver": "USB\\VID_1A86&PID_7523",
+    "updateApp": "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe",
+    "playAllAtOnce": false,
+    "medias": [
+        {
+            "mediaPlayer": "mpv.exe -fs --osc=no --title=mpvPlay",
+            "fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/idle.mp4",
+            "lastModified": "Tue, 23 Sep 2025 13:40:03 GMT"
+        },
+        {
+            "mediaPlayer": "mpv.exe -fs --osc=no --title=mpvPlay",
+            "fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/pt.mp4",
+            "lastModified": "Tue, 23 Sep 2025 19:45:46 GMT"
+        },
+        {
+            "mediaPlayer": "mpv.exe -fs --osc=no --title=mpvPlay",
+            "fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/en.mp4",
+            "lastModified": "Tue, 23 Sep 2025 19:42:41 GMT"
+        },
+        {
+            "mediaPlayer": "mpv.exe -fs --osc=no --title=mpvPlay",
+            "fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/libras.mp4",
+            "lastModified": "Tue, 23 Sep 2025 19:43:57 GMT"
+        }
+    ]
+}

@@ -26,7 +26,6 @@ import shutil
 import signal
 import serial.tools.list_ports
 from urllib.parse import urlparse
-import keyboard # pip install keyboard
 
 VERSION = "2025.09.24"
 print(f"Version : {VERSION}")
@@ -90,12 +89,12 @@ def readConfig(settingsFile):
 			data = json.load(json_file)
 	else:
 		#Teste if mpv Exists
+		installApps()
 		try:
 			videoPlaying = subprocess.run(["mpv"], stdout = subprocess.DEVNULL) #do not show output
 		except FileNotFoundError:
-			if installMediaPlayer("mpv") == False:
-				input("mpv not installed, Please install manually, exiting...")
-				sys.exit()
+			input("mpv not installed, Please install manually, exiting...")
+			sys.exit(0)
 
 		#Teste if ffmpeg Exists
 		try:
@@ -103,32 +102,37 @@ def readConfig(settingsFile):
 		except FileNotFoundError:
 			installFFmpeg()
 		if OS == "Windows":
-			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayerBtns.exe"
+			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
 			mediaPlayer = "mpv.exe -fs --osc=no --title=mpvPlay"
 		elif OS == "Linux":
-			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayerBtns_arm64"
+			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
 			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
 		data = {
             "uart" : "auto",
-			"useSerial" : True,
+			"useSerial" : False,
 	        "baudrate" : 9600,
+			"usbName" : "CH340",
             "arduinoDriver" : "USB\\VID_1A86&PID_7523",
-			"mediaPlayer": mediaPlayer,
 			"updateApp" : updateApp,
+			"playAllAtOnce" : False,
 			"medias": [
 				{
+					"mediaPlayer": mediaPlayer,
 					"fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/idle.mp4",
 					"lastModified": ""
 				},
 				{
+					"mediaPlayer": mediaPlayer,
 					"fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/pt.mp4",
 					"lastModified": ""
 				},
 				{
+					"mediaPlayer": mediaPlayer,
 					"fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/en.mp4",
 					"lastModified": ""
 				},
 				{	
+					"mediaPlayer": mediaPlayer,
 					"fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/libras.mp4",
 					"lastModified": ""
 				}
@@ -175,25 +179,21 @@ def getBackground():
 			return backGroundFile
 	return None
 
-def installMediaPlayer(appToInstall):
-	if appToInstall == "mpv":
+def installApps():
+	try:
 		#install mpv
 		print("Installing mpv")
 		if OS == "Windows":
 			subprocess.run(["winget", "install", "mpv", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
+			subprocess.run(["winget", "install", "ffmpeg"])
 		if OS == "Linux":
 			subprocess.run(["sudo", "apt", "install", "mpv", "-y"])
+			subprocess.run(["sudo", "apt", "install", "feh", "-y"])
 		print("Installation of MPV complete")
 		return True
-	else:
-		print(f"Video Player is not installed, please install player {appToInstall}, exiting...")
+	except:
+		print(f"problemas installing apps please install manually, exiting...")
 		return False
-
-def installFFmpeg():
-	if OS == "Windows":
-		subprocess.run(["winget", "install", "ffmpeg"])
-	print("Installation of ffmpeg complete")
-	return True
 
 def get_modified_date(url):
 	try:
@@ -286,9 +286,10 @@ def signal_handler(sig, frame):
 		print('Received Close signal')
 	else:
 		print('Received signal:', sig)
-	killProcess(mediaPlayer[0])
+	killProcess(playerIdle[0])
 	if OS == "Linux":
 		killProcess("mpv")
+		killProcess("feh")
 	elif OS == "Windows":
 		killProcess("mpv.exe")
 	sys.exit(0)
@@ -333,13 +334,12 @@ config = readConfig(settingsFile)
 uart = config.get("uart", "auto")
 baudrate = int(config.get("baudrate", 9600))
 useSerial = bool(config.get("useSerial", False))
+usbName = config.get("usbName", "CH340")
 arduinoDriver = config.get("arduinoDriver", "USB\\VID_1A86&PID_7523")
 if OS == "Linux":
 	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer")
-	mediaPlayerGet = config.get("mediaPlayer", "cvlc -f --no-osd --play-and-exit -q")
 elif OS == "Windows":
 	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
-	mediaPlayerGet = config.get("mediaPlayer", "mpv -fs")
 
 if check_internet(NEW_APP):
 	check_update(NEW_APP)
@@ -352,18 +352,24 @@ else:
 		filePath = os.path.join(mediaFolder, fileName)
 		localMedias.append(filePath)
 
-mediaPlayer = mediaPlayerGet.split()
+#mediaPlayer = mediaPlayerGet.split()
 
 # setup Seiral
+uartOn = False
 if useSerial:
 	noSerial = True
 	while noSerial:
 		try:
 			if uart == "auto":
 				ports = list(serial.tools.list_ports.comports())
+				hasCom = False
 				for p in ports:
-					if "USB" in p.description:
+					if usbName in p.description:
 						uart = p.device
+						hasCom = True
+						break
+				if not hasCom:
+					noSerial = False
 			print(f"Using port: {uart}")
 			
 			ser = serial.Serial(
@@ -376,30 +382,24 @@ if useSerial:
 			ser.flush()
 		except serial.SerialException as e:
 			#print("An exception occurred:", e)
-			if "PermissionError" in str(e):
-				print("PermissionError")
-				print("Restart arduino driver")
-				print(f"Using driver: {arduinoDriver}")
-				devconFile = os.path.join(bundle_dir, "devcon.exe")
-				subprocess.run([devconFile, "disable", arduinoDriver])
-				subprocess.run([devconFile, "enable", arduinoDriver])
-			else:
-				print("An unexpected serial error occurred.")
+			if OS == "Windows":
+				if "PermissionError" in str(e):
+					print("PermissionError")
+					print("Restart arduino driver")
+					print(f"Using driver: {arduinoDriver}")
+					devconFile = os.path.join(bundle_dir, "devcon.exe")
+					subprocess.run([devconFile, "disable", arduinoDriver])
+					subprocess.run([devconFile, "enable", arduinoDriver])
+				else:
+					print("An unexpected serial error occurred.")
 		except Exception as error:
 			print("An unexpected error occurred:", error)
-else:
-	#Use keyBoard Presses 0, 1, 2, etc
-	uartOn = False
-	mediaPlayer.append("--no-config")
-	mediaPlayer.append("--no-input-default-bindings")
-	print("Serial port is disabled. Using keyboard for input.")
-	print("Press keys 0, 1, 2, etc. to play media. Press Ctrl+C to exit.")
-
 
 #check number of files
 if len(localMedias) == 0:
 	input("No media files found, exiting...")
-	sys.exit()
+	sys.exit(0)
+
 running = True
 
 #Check if File Exists and remove item if none exists
@@ -421,9 +421,9 @@ if OS == "Linux":
 			print(f"Media Player Command: {backGroundPlayer}")
 			subprocess.Popen(backGroundPlayer, stdout = subprocess.DEVNULL)
 
-playerIdle = mediaPlayer.copy()
 print(f"localMedias: {localMedias}")
 if len(localMedias) > 0:
+	playerIdle = config["medias"][0]["mediaPlayer"].split()
 	playerIdle.append("--loop")
 	playerIdle.append(localMedias[0]) # Play first media as idle
 print(f"Media Player Command: {playerIdle}")
@@ -440,8 +440,8 @@ try:
 				pass
 			if x.isnumeric():
 				xInt = int(x)
-				killProcess(mediaPlayer[0])
-				newPlayer = mediaPlayer.copy()
+				newPlayer = config["medias"][xInt+1]["mediaPlayer"].split()
+				killProcess(newPlayer[0])
 				newPlayer.append(localMedias[xInt+1])
 				#print(f"Serial {xInt} : {localMedias[xInt]}")
 				player = subprocess.Popen(newPlayer)
