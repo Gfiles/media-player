@@ -8,12 +8,14 @@ BackOffice Variables:
 	ffplay -fs -loop 0
 	aplay -l to get list of audio devices
 	aplay -Dplughw:2,0
-.venv/bin/pyinstaller --onefile -n ydPlayer_arm64 ydPlayer.py
-pyinstaller --onefile -n ydPlayer_deb ydPlayer.py
-pyinstaller --onefile ydPlayer.py
+Windows:
+	.venv\Scripts\pyinstaller --onefile --add-data "devcon.exe;." -n ydPlayer ydPlayerNew.py
+Rasp Pi:
+	.venv/bin/pyinstaller --onefile -n ydPlayerBtns_arm64ydPlayerNew.py
 """
 import mimetypes
 import subprocess
+import time
 import json
 import os
 import sys
@@ -22,9 +24,12 @@ import platform
 from datetime import datetime
 import shutil
 import signal
+import serial.tools.list_ports
+import random
+from urllib.parse import urlparse
 
-VERSION = "2025.08.21"
-print(f"Version : {VERSION}") 
+VERSION = "2025.10.16"
+print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
 	global OS
@@ -84,18 +89,38 @@ def readConfig(settingsFile):
 		with open(settingsFile) as json_file:
 			data = json.load(json_file)
 	else:
+		#Teste if mpv Exists
+		installApps()
+		try:
+			videoPlaying = subprocess.run(["mpv"], stdout = subprocess.DEVNULL) #do not show output
+		except FileNotFoundError:
+			input("mpv not installed, Please install manually, exiting...")
+			sys.exit(0)
+
+		#Teste if ffmpeg Exists
+		try:
+			subprocess.run(["ffmpeg"], stdout = subprocess.DEVNULL) #do not show output
+		except FileNotFoundError:
+			installFFmpeg()
 		if OS == "Windows":
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
-			mediaPlayer = "mpv -fs --osc=no --title=mpvPlay"
+			mediaPlayer = "mpv.exe -fs --osc=no --title=mpvPlay"
 		elif OS == "Linux":
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
 			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
 		data = {
-			"mediaPlayer": mediaPlayer,
-			"playAllAtOnce" : False,
+            "uart" : "auto",
+			"useSerial" : False,
+	        "baudrate" : 9600,
+			"usbName" : "CH340",
+            "arduinoDriver" : "USB\\VID_1A86&PID_7523",
 			"updateApp" : updateApp,
+			"playAllAtOnce" : False,
+			"playRandom" : False,
 			"medias": [
 				{
+					"mediaPlayer": mediaPlayer,
+					"audioOut" : "auto",
 					"fileUrl": "https://proj.ydreams.global/ydreams/videos/bunny_1080p_30fps.mp4",
 					"lastModified": ""
 				}
@@ -142,25 +167,21 @@ def getBackground():
 			return backGroundFile
 	return None
 
-def installMediaPlayer(appToInstall):
-	if appToInstall == "mpv":
+def installApps():
+	try:
 		#install mpv
 		print("Installing mpv")
 		if OS == "Windows":
 			subprocess.run(["winget", "install", "mpv", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
+			subprocess.run(["winget", "install", "ffmpeg"])
 		if OS == "Linux":
 			subprocess.run(["sudo", "apt", "install", "mpv", "-y"])
+			subprocess.run(["sudo", "apt", "install", "feh", "-y"])
 		print("Installation of MPV complete")
 		return True
-	else:
-		print(f"Video Player is not installed, please install player {appToInstall}, exiting...")
+	except:
+		print(f"problemas installing apps please install manually, exiting...")
 		return False
-
-def installFFmpeg():
-	if OS == "Windows":
-		subprocess.run(["winget", "install", "ffmpeg"])
-	print("Installation of ffmpeg complete")
-	return True
 
 def get_modified_date(url):
 	try:
@@ -236,7 +257,14 @@ def check_file_type(file_path):
 
 def check_internet(url):
 	try:
-		response = requests.get(url, timeout=5)
+		# how to get main url domain
+		parsed_url = urlparse(url)
+		# parsed_url is now:
+		# ParseResult(scheme='https', netloc='proj.ydreams.global', path='/firjan/e7-habilidades/totem-01/idle.mp4', params='', query='', fragment='')
+		base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+		#print(f"check_internet: {base_url}")
+		
+		response = requests.get(base_url, timeout=5)
 		return True if response.status_code == 200 else False
 	except requests.ConnectionError:
 		return False
@@ -246,15 +274,48 @@ def signal_handler(sig, frame):
 		print('Received Close signal')
 	else:
 		print('Received signal:', sig)
-	killProcess(mediaPlayer[0])
-	if OS == "Linux":
-		killProcess("mpv")
-	elif OS == "Windows":
-		killProcess("mpv.exe")
+	killProcess(config["medias"][0]["mediaPlayer"].split()[0])
+	if 'ser' in locals() and ser.is_open:
+		ser.close()
 	sys.exit(0)
     
-#---------- End Functions --------------
+def randomize_medias():
+	# We shuffle the list of medias, but keep the first one (idle media) in place.
+	media_to_shuffle = localMedias[1:]
+	random.shuffle(media_to_shuffle)
+	localMedias[1:] = media_to_shuffle
+	print(f"Randomized media order: {localMedias}")
+	
+def find_all(a_str, sub):
+    start = 0
+    while True:
+        start = a_str.find(sub, start)
+        if start == -1: 
+            return
+        yield start
+        start += len(sub) # use start += 1 to find overlapping matches
 
+def find_audio_devices(audioOut):
+	if OS == "Windows":
+		audio_list = subprocess.check_output(["mpv", "--audio-device=help"]).decode("utf-8")
+		device = ""
+		device_list = []
+		for i in audio_list:
+			device += i
+			if i == "\n":
+				device_list.append(device)
+				device = ""
+		
+		for new in device_list:
+			if audioOut in new:
+				get_device = list(find_all(new, "'"))
+				return f"--audio-device={new[get_device[0]+1:get_device[1]]}"
+		
+	elif OS == "Linux":
+		audio_list = subprocess.Popen(["aplay", "-l"], stdout=subprocess.PIPE)
+
+
+#---------- End Functions --------------
 # Register the signal handler
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)  # Optional: Handle Ctrl+C
@@ -290,10 +351,15 @@ myName = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 #print(f"Script name: {myName}")
 settingsFile = os.path.join(cwd, f"{myName}.json")
 config = readConfig(settingsFile)
-if OS == "Windows":
-	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
-elif OS == "Linux":
+uart = config.get("uart", "auto")
+baudrate = int(config.get("baudrate", 9600))
+useSerial = bool(config.get("useSerial", False))
+usbName = config.get("usbName", "CH340")
+arduinoDriver = config.get("arduinoDriver", "USB\\VID_1A86&PID_7523")
+if OS == "Linux":
 	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer")
+elif OS == "Windows":
+	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
 
 if check_internet(NEW_APP):
 	check_update(NEW_APP)
@@ -306,30 +372,52 @@ else:
 		filePath = os.path.join(mediaFolder, fileName)
 		localMedias.append(filePath)
 
-if OS == "Windows":
-	mediaPlayerGet = config.get("mediaPlayer", "mpv -fs")
-elif OS == "Linux":
-	mediaPlayerGet = config.get("mediaPlayer", "cvlc -f --no-osd")
-mediaPlayer = mediaPlayerGet.split()
-
-#Teste if mpv Exists
-try:
-	videoPlaying = subprocess.run(["mpv"], stdout = subprocess.DEVNULL) #do not show output
-except FileNotFoundError:
-	if installMediaPlayer("mpv") == False:
-		input("mpv not installed, Please install manually, exiting...")
-		sys.exit()
-
-#Teste if ffmpeg Exists
-try:
-	subprocess.run(["ffmpeg"], stdout = subprocess.DEVNULL) #do not show output
-except FileNotFoundError:
-	installFFmpeg()
+# setup Seiral
+uartOn = False
+if useSerial:
+	noSerial = True
+	while noSerial:
+		try:
+			if uart == "auto":
+				ports = list(serial.tools.list_ports.comports())
+				hasCom = False
+				for p in ports:
+					if usbName in p.description:
+						uart = p.device
+						hasCom = True
+						break
+				if not hasCom:
+					noSerial = False
+			print(f"Using port: {uart}")
+			
+			ser = serial.Serial(
+				port=uart,
+				baudrate=baudrate,
+				timeout=1
+			)
+			noSerial = False
+			uartOn = True
+			ser.flush()
+		except serial.SerialException as e:
+			#print("An exception occurred:", e)
+			if OS == "Windows":
+				if "PermissionError" in str(e):
+					print("PermissionError")
+					print("Restart arduino driver")
+					print(f"Using driver: {arduinoDriver}")
+					devconFile = os.path.join(bundle_dir, "devcon.exe")
+					subprocess.run([devconFile, "disable", arduinoDriver])
+					subprocess.run([devconFile, "enable", arduinoDriver])
+				else:
+					print("An unexpected serial error occurred.")
+		except Exception as error:
+			print("An unexpected error occurred:", error)
 
 #check number of files
 if len(localMedias) == 0:
 	input("No media files found, exiting...")
-	sys.exit()
+	sys.exit(0)
+
 running = True
 
 #Check if File Exists and remove item if none exists
@@ -339,37 +427,96 @@ for filePath in localMediasCopy:
 	if os.path.isfile(filePath):
 		localMedias.append(filePath)
 
-#Play background in loop
-if len(localMedias) > 1:
-	backGroundFile = getBackground()
-	if backGroundFile:
-		print(f"Background file: {backGroundFile}")
-		backGroundPlayer = ["mpv", "-fs", "--osc=no", "--loop", "--title=mpvPlay"]
-		backGroundPlayer.append(backGroundFile)
-		print(f"Media Player Command: {backGroundPlayer}")
-		subprocess.Popen(backGroundPlayer, stdout = subprocess.DEVNULL)
+#Play background image
+if OS == "Linux":
+	if len(localMedias) > 1:
+		backGroundFile = getBackground()
+		if backGroundFile:
+			print(f"Background file: {backGroundFile}")
+			#feh --hide-pointer -x -q -B black -g 1280x800 /home/pi/image.jpg
+			backGroundPlayer = ["feh", "-Y", "-F"]
+			backGroundPlayer.append(backGroundFile)
+			print(f"Media Player Command: {backGroundPlayer}")
+			subprocess.Popen(backGroundPlayer, stdout = subprocess.DEVNULL)
+
 
 playAllAtOnce = config.get("playAllAtOnce", False)
 #Create players Processes
 if playAllAtOnce:
 	multiPlayers = list()
 	players = list()
-	for media in localMedias:
-		player = mediaPlayer.copy()
+	for i, media in enumerate(localMedias):
+		player = config["medias"][i]["mediaPlayer"].split()
+		if config["medias"][i]["audioOut"] != "auto":
+			player.append(find_audio_devices(config["medias"][i]["audioOut"]))
 		player.append(media)
 		players.append(player)
 		print(player)
 		multiPlayers.append(subprocess.Popen(player))
+else:
+	print(f"localMedias: {localMedias}")
+	if (len(localMedias) > 0) and (uartOn):
+		playerIdle = config["medias"][0]["mediaPlayer"].split()
+		if config["medias"][0]["audioOut"] != "auto":
+			playerIdle.append(find_audio_devices(config["medias"][0]["audioOut"]))
+		playerIdle.append("--loop")
+		playerIdle.append(localMedias[0]) # Play first media as idle
+		print(f"Media Player Command: {playerIdle}")
+		player = subprocess.Popen(playerIdle)
+
+playRandom = config.get("playRandom", False)
+if playRandom and len(localMedias) > 1:
+	randomize_medias()
+	random_counter = 0
+	num_medias = len(localMedias) - 1
+
 print("Ready")
-while running:
-	#play all medias in loop
-	for i, media in enumerate(localMedias):
-		if playAllAtOnce:
-			if multiPlayers[i].poll() is not None:
-				print(players[i])
-				multiPlayers[i] = subprocess.Popen(players[i])
+try:
+	while running:		
+		if uartOn:
+			x=ser.readline().strip().decode()
+			try:
+				if player.poll() is not None:
+					player = subprocess.Popen(playerIdle)
+			except:
+				pass
+			if x.isnumeric():
+				if playRandom:
+					random_counter += 1
+					xInt = random_counter
+					if random_counter >= num_medias:
+						random_counter = 0
+						randomize_medias()
+				else:
+					xInt = int(x)
+				newPlayer = config["medias"][xInt+1]["mediaPlayer"].split()
+				if config["medias"][xInt+1]["audioOut"] != "auto":
+					newPlayer.append(find_audio_devices(config["medias"][xInt+1]["audioOut"]))
+				killProcess(newPlayer[0])
+				newPlayer.append(localMedias[xInt+1])
+				#print(f"Serial {xInt} : {localMedias[xInt]}")
+				player = subprocess.Popen(newPlayer)
 		else:
-			player = mediaPlayer.copy()
-			player.append(media)
-			print(player)
-			subprocess.run(player)
+			for i, media in enumerate(localMedias):
+				if playAllAtOnce:
+					if multiPlayers[i].poll() is not None:
+						print(players[i])
+						multiPlayers[i] = subprocess.Popen(players[i])
+				else:
+					player = config["medias"][i]["mediaPlayer"].split()
+					if config["medias"][i]["audioOut"] != "auto":
+						player.append(find_audio_devices(config["medias"][i]["audioOut"]))
+					player.append(media)
+					print(player)
+					subprocess.run(player)
+			if playRandom:
+				randomize_medias()
+			
+
+				
+except KeyboardInterrupt:
+	print("\nExiting on user request.")
+	if 'ser' in locals() and ser.is_open:
+		ser.close()
+	killProcess(config["medias"][0]["mediaPlayer"].split()[0])
+	sys.exit(0)
