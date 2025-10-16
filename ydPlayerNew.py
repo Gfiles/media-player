@@ -104,10 +104,10 @@ def readConfig(settingsFile):
 			installFFmpeg()
 		if OS == "Windows":
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
-			mediaPlayer = "mpv.exe -fs --osc=no --title=mpvPlay"
+			mediaPlayer = "mpv.exe -fs --volume=100 --osc=no --title=mpvPlay"
 		elif OS == "Linux":
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
-			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
+			mediaPlayer = "cvlc -f --volume 1024 --no-osd --play-and-exit -q"
 		data = {
             "uart" : "auto",
 			"useSerial" : False,
