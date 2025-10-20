@@ -26,7 +26,7 @@ elif sys.platform.startswith('linux') and machine_arch in ('x86_64', 'i686', 'x8
 # --- PyInstaller Build Command ---
 if sys.platform == 'win32':
     pyinstaller_command = [
-        '.venv\Scripts\pyinstaller', '--name', APP_NAME, '--onefile', '--clean',
+        '.venv\Scripts\pyinstaller', '--name', APP_NAME, '--onefile', '--clean', '--add-data', 'devcon.exe;.', 
         MAIN_SCRIPT
     ]
 else:
@@ -81,7 +81,8 @@ VSVersionInfo(
         f.write(version_info_content)
     print(f"Generated '{version_file_path}' with version {VERSION}")
 
-    pyinstaller_command.extend(['--windowed', '--version-file', version_file_path])
+    #pyinstaller_command.extend(['--windowed', '--version-file', version_file_path])
+    pyinstaller_command.extend(['--version-file', version_file_path])
 else:
     print(f"{sys.platform} platform detected. Building standard executable.")
 
