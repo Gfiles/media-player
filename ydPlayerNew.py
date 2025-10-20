@@ -11,7 +11,7 @@ BackOffice Variables:
 Windows:
 	.venv\Scripts\pyinstaller --onefile --add-data "devcon.exe;." -n ydPlayer ydPlayerNew.py
 Rasp Pi:
-	.venv/bin/pyinstaller --onefile -n ydPlayerBtns_arm64ydPlayerNew.py
+	.venv/bin/pyinstaller --onefile -n ydPlayerBtns_arm64 ydPlayerNew.py
 """
 import mimetypes
 import subprocess
@@ -28,7 +28,7 @@ import serial.tools.list_ports
 import random
 from urllib.parse import urlparse
 
-VERSION = "2025.10.16"
+VERSION = "2025.10.20"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -274,7 +274,7 @@ def signal_handler(sig, frame):
 		print('Received Close signal')
 	else:
 		print('Received signal:', sig)
-	killProcess(config["medias"][0]["mediaPlayer"].split()[0])
+	killProcess(medias[0].get("mediaPlayer", "mpv").split()[0])
 	if 'ser' in locals() and ser.is_open:
 		ser.close()
 	sys.exit(0)
@@ -360,12 +360,12 @@ if OS == "Linux":
 	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer")
 elif OS == "Windows":
 	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
+medias = config.get("medias", [])
 
 if check_internet(NEW_APP):
 	check_update(NEW_APP)
 	downloadContents()
 else:
-	medias = config.get("medias", [])
 	for media in medias:
 		mediaurl = media.get("fileUrl", "")
 		fileName = os.path.basename(mediaurl)
@@ -446,9 +446,9 @@ if playAllAtOnce:
 	multiPlayers = list()
 	players = list()
 	for i, media in enumerate(localMedias):
-		player = config["medias"][i]["mediaPlayer"].split()
-		if config["medias"][i]["audioOut"] != "auto":
-			player.append(find_audio_devices(config["medias"][i]["audioOut"]))
+		player = medias[i].get("mediaPlayer", "mpv").split()
+		if medias[i].get("audioOut", "auto") != "auto":
+			player.append(find_audio_devices(medias[i].get("audioOut", "auto")))
 		player.append(media)
 		players.append(player)
 		print(player)
@@ -456,9 +456,9 @@ if playAllAtOnce:
 else:
 	print(f"localMedias: {localMedias}")
 	if (len(localMedias) > 0) and (uartOn):
-		playerIdle = config["medias"][0]["mediaPlayer"].split()
-		if config["medias"][0]["audioOut"] != "auto":
-			playerIdle.append(find_audio_devices(config["medias"][0]["audioOut"]))
+		playerIdle = medias[0].get("mediaPlayer", "mpv").split()
+		if medias[0].get("audioOut", "auto") != "auto":
+			playerIdle.append(find_audio_devices(medias[0].get("audioOut", "auto")))
 		playerIdle.append("--loop")
 		playerIdle.append(localMedias[0]) # Play first media as idle
 		print(f"Media Player Command: {playerIdle}")
@@ -489,9 +489,9 @@ try:
 						randomize_medias()
 				else:
 					xInt = int(x)
-				newPlayer = config["medias"][xInt+1]["mediaPlayer"].split()
-				if config["medias"][xInt+1]["audioOut"] != "auto":
-					newPlayer.append(find_audio_devices(config["medias"][xInt+1]["audioOut"]))
+				newPlayer = medias[xInt+1].get("mediaPlayer", "mpv").split()
+				if medias[xInt+1].get("audioOut", "auto") != "auto":
+					newPlayer.append(find_audio_devices(medias[xInt+1].get("audioOut", "auto")))
 				killProcess(newPlayer[0])
 				newPlayer.append(localMedias[xInt+1])
 				#print(f"Serial {xInt} : {localMedias[xInt]}")
@@ -503,9 +503,9 @@ try:
 						print(players[i])
 						multiPlayers[i] = subprocess.Popen(players[i])
 				else:
-					player = config["medias"][i]["mediaPlayer"].split()
-					if config["medias"][i]["audioOut"] != "auto":
-						player.append(find_audio_devices(config["medias"][i]["audioOut"]))
+					player = medias[i].get("mediaPlayer", "mpv").split()
+					if medias[i].get("audioOut", "auto") != "auto":
+						player.append(find_audio_devices(medias[i].get("audioOut", "auto")))
 					player.append(media)
 					print(player)
 					subprocess.run(player)
@@ -518,5 +518,5 @@ except KeyboardInterrupt:
 	print("\nExiting on user request.")
 	if 'ser' in locals() and ser.is_open:
 		ser.close()
-	killProcess(config["medias"][0]["mediaPlayer"].split()[0])
+	killProcess(medias[0].get("mediaPlayer", "mpv").split()[0])
 	sys.exit(0)

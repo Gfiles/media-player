@@ -10,7 +10,6 @@
     "medias": [
         {
             "mediaPlayer": "mpv.exe -fs --osc=no --title=mpvPlay",
-            "audioOut": "(Realtek",
             "fileUrl": "https://proj.ydreams.global/firjan/e7-habilidades/totem-01/idle.mp4",
             "lastModified": "Tue, 23 Sep 2025 13:40:03 GMT"
         },
