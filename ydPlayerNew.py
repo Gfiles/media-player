@@ -429,15 +429,14 @@ for filePath in localMediasCopy:
 
 #Play background image
 if OS == "Linux":
-	if len(localMedias) > 1:
-		backGroundFile = getBackground()
-		if backGroundFile:
-			print(f"Background file: {backGroundFile}")
-			#feh --hide-pointer -x -q -B black -g 1280x800 /home/pi/image.jpg
-			backGroundPlayer = ["feh", "-Y", "-F"]
-			backGroundPlayer.append(backGroundFile)
-			print(f"Media Player Command: {backGroundPlayer}")
-			subprocess.Popen(backGroundPlayer, stdout = subprocess.DEVNULL)
+	backGroundFile = getBackground()
+	if backGroundFile:
+		print(f"Background file: {backGroundFile}")
+		#feh --hide-pointer -x -q -B black -g 1280x800 /home/pi/image.jpg
+		backGroundPlayer = ["feh", "-Y", "-F"]
+		backGroundPlayer.append(backGroundFile)
+		print(f"Media Player Command: {backGroundPlayer}")
+		subprocess.Popen(backGroundPlayer, stdout = subprocess.DEVNULL)
 
 
 playAllAtOnce = config.get("playAllAtOnce", False)
