@@ -28,7 +28,7 @@ import serial.tools.list_ports
 import random
 from urllib.parse import urlparse
 
-VERSION = "2025.10.20"
+VERSION = "2025.10.22"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -107,7 +107,7 @@ def readConfig(settingsFile):
 			mediaPlayer = "mpv.exe -fs --volume=100 --osc=no --title=mpvPlay"
 		elif OS == "Linux":
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
-			mediaPlayer = "cvlc -f --volume 1024 --no-osd --play-and-exit -q"
+			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
 		data = {
             "uart" : "auto",
 			"useSerial" : False,
