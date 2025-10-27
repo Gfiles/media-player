@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "sys_platform == 'darwin'",
@@ -70,6 +70,14 @@ wheels = [
 ]
 
 [[package]]
+name = "inputimeout"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/9c/1646ca469bc2dc299ac393c8d31136c6c22a35ca1e373fa462ac01100d37/inputimeout-1.0.4-py3-none-any.whl", hash = "sha256:f4e23d27753cfc25268eefc8d52a3edc46280ad831d226617c51882423475a43", size = 4639, upload-time = "2018-03-02T14:28:06.903Z" },
+]
+
+[[package]]
 name = "macholib"
 version = "1.16.3"
 source = { registry = "https://pypi.org/simple" }
@@ -86,6 +94,7 @@ name = "media-player"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "inputimeout" },
     { name = "opencv-python" },
     { name = "psutil" },
     { name = "pyinstaller" },
@@ -95,6 +104,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "inputimeout", specifier = ">=1.0.4" },
     { name = "opencv-python", specifier = ">=4.11.0.86" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pyinstaller", specifier = ">=6.12.0" },

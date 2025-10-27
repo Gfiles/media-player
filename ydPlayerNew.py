@@ -27,8 +27,9 @@ import signal
 import serial.tools.list_ports
 import random
 from urllib.parse import urlparse
+from inputimeout import inputimeout, TimeoutOccurred #pip install inputimeout
 
-VERSION = "2025.10.22"
+VERSION = "2025.10.27"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -94,38 +95,54 @@ def readConfig(settingsFile):
 		try:
 			videoPlaying = subprocess.run(["mpv"], stdout = subprocess.DEVNULL) #do not show output
 		except FileNotFoundError:
-			input("mpv not installed, Please install manually, exiting...")
+			try:
+				user_input = inputimeout(prompt="mpv not installed, Please install manually, exiting...", timeout=60)
+				print(f'You entered: {user_input}')
+			except TimeoutOccurred:
+				print('Time is up! Continuing with the script...')
 			sys.exit(0)
 
-		#Teste if ffmpeg Exists
-		try:
-			subprocess.run(["ffmpeg"], stdout = subprocess.DEVNULL) #do not show output
-		except FileNotFoundError:
-			installFFmpeg()
 		if OS == "Windows":
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
 			mediaPlayer = "mpv.exe -fs --volume=100 --osc=no --title=mpvPlay"
+			data = {
+				"uart" : "auto",
+				"useSerial" : False,
+				"baudrate" : 9600,
+				"usbName" : "CH340",
+				"arduinoDriver" : "USB\\VID_1A86&PID_7523",
+				"updateApp" : updateApp,
+				"playAllAtOnce" : False,
+				"playRandom" : False,
+				"medias": [
+					{
+						"mediaPlayer": mediaPlayer,
+						"audioOut" : "auto",
+						"fileUrl": "https://proj.ydreams.global/ydreams/videos/no_app.mp4",
+						"lastModified": ""
+					}
+				]
+			}
 		elif OS == "Linux":
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
 			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
-		data = {
-            "uart" : "auto",
-			"useSerial" : False,
-	        "baudrate" : 9600,
-			"usbName" : "CH340",
-            "arduinoDriver" : "USB\\VID_1A86&PID_7523",
-			"updateApp" : updateApp,
-			"playAllAtOnce" : False,
-			"playRandom" : False,
-			"medias": [
-				{
-					"mediaPlayer": mediaPlayer,
-					"audioOut" : "auto",
-					"fileUrl": "https://proj.ydreams.global/ydreams/videos/bunny_1080p_30fps.mp4",
-					"lastModified": ""
-				}
-			]
-		}
+			data = {
+				"uart" : "auto",
+				"useSerial" : False,
+				"baudrate" : 9600,
+				"usbName" : "USB",
+				"updateApp" : updateApp,
+				"playAllAtOnce" : False,
+				"playRandom" : False,
+				"medias": [
+					{
+						"mediaPlayer": mediaPlayer,
+						"audioOut" : "auto",
+						"fileUrl": "https://proj.ydreams.global/ydreams/videos/no_app.mp4",
+						"lastModified": ""
+					}
+				]
+			}
 		# Serializing json
 		json_object = json.dumps(data, indent=4)
  
@@ -133,7 +150,12 @@ def readConfig(settingsFile):
 		with open(settingsFile, "w") as outfile:
 			outfile.write(json_object)
 		print(f"Config file {settingsFile} created with default values.")
-		getInput = input("Do you want to edit the config file? (y/n): ")
+		try:
+			getInput = inputimeout(prompt="Do you want to edit the config file? (y/n): ", timeout=60)
+			print(f'You entered: {user_input}')
+		except TimeoutOccurred:
+			print('Time is up! Continuing with the script...')
+			getInput = ""
 		if getInput.lower() == "y":
 			if OS == "Windows":
 				print("Opening config file in Notepad++")
@@ -330,8 +352,10 @@ except NameError:
 this_file = os.path.abspath(this_file)
 if getattr(sys, 'frozen', False):
 	cwd = os.path.dirname(sys.executable)
+	bundle_dir = sys._MEIPASS
 else:
 	cwd = os.path.dirname(this_file)
+	bundle_dir = os.path.dirname(os.path.abspath(__file__))
 
 print("Current working directory:", cwd)
 OS = platform.system()
@@ -410,12 +434,18 @@ if useSerial:
 					subprocess.run([devconFile, "enable", arduinoDriver])
 				else:
 					print("An unexpected serial error occurred.")
+			else:
+				print("An unexpected serial error occurred.")
 		except Exception as error:
 			print("An unexpected error occurred:", error)
 
 #check number of files
 if len(localMedias) == 0:
-	input("No media files found, exiting...")
+	try:
+		user_input = inputimeout(prompt='No media files found, exiting...', timeout=60)
+		print(f'You entered: {user_input}')
+	except TimeoutOccurred:
+		print('Time is up! Continuing with the script...')
 	sys.exit(0)
 
 running = True
@@ -441,7 +471,15 @@ if OS == "Linux":
 
 playAllAtOnce = config.get("playAllAtOnce", False)
 #Create players Processes
-if playAllAtOnce:
+if len(localMedias) == 1:
+	playerIdle = medias[0].get("mediaPlayer", "mpv").split()
+	if medias[0].get("audioOut", "auto") != "auto":
+		playerIdle.append(find_audio_devices(medias[0].get("audioOut", "auto")))
+	playerIdle.append("--loop")
+	playerIdle.append(localMedias[0]) # Play first media as idle
+	print(f"Media Player Command: {playerIdle}")
+	player = subprocess.Popen(playerIdle)
+elif playAllAtOnce:
 	multiPlayers = list()
 	players = list()
 	for i, media in enumerate(localMedias):
@@ -471,8 +509,10 @@ if playRandom and len(localMedias) > 1:
 
 print("Ready")
 try:
-	while running:		
-		if uartOn:
+	while running:
+		if len(localMedias) == 1:
+			time.sleep(1)
+		elif uartOn:
 			x=ser.readline().strip().decode()
 			try:
 				if player.poll() is not None:
@@ -511,8 +551,6 @@ try:
 			if playRandom:
 				randomize_medias()
 			
-
-				
 except KeyboardInterrupt:
 	print("\nExiting on user request.")
 	if 'ser' in locals() and ser.is_open:
