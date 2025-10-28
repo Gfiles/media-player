@@ -367,9 +367,8 @@ def hide_console():
 def open_config_file():
 	"""Launches the config_editor.py GUI application."""
 	editor_script = 'config_editor.py'
-	editor_exe_name = 'config_editor'
 	if OS == "Windows":
-		editor_exe_name += '.exe'
+		editor_exe_name = os.path.join(bundle_dir, "config_editor.exe")
 
 	# Path for running from source vs. packaged
 	editor_path = os.path.join(cwd, editor_script)

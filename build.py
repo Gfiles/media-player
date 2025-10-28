@@ -26,7 +26,14 @@ elif sys.platform.startswith('linux') and machine_arch in ('x86_64', 'i686', 'x8
 # --- PyInstaller Build Command ---
 if sys.platform == 'win32':
     pyinstaller_command = [
-        'pyinstaller', '--name', APP_NAME, '--onefile', '--clean', '--add-data', 'devcon.exe;.', '--add-data', 'icon.png;.', '--icon=icon.png',
+        'pyinstaller', 
+        '--name', APP_NAME, 
+        '--onefile', 
+        '--clean', 
+        '--add-data', 'devcon.exe;.', 
+        '--add-data', 'icon.png;.',
+        '--add-data', 'dist/config_editor.exe;.',
+        '--icon=icon.png',
         MAIN_SCRIPT
     ]
     """

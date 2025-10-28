@@ -248,18 +248,12 @@ class JsonEditorApp:
             if field == "audioOut":
                 widget = ttk.Combobox(editor, textvariable=var, width=58)
                 widget['values'] = get_audio_devices()
+            elif field == "fileUrl":
+                widget = ttk.Entry(editor, textvariable=var)
+                ttk.Button(editor, text="Browse...", command=lambda v=var: browse_media_file(v)).grid(row=2, column=2, padx=(5, 15))
             else:
-                # For fileUrl, add a browse button
-                if field == "fileUrl":
-                    frame = ttk.Frame(editor)
-                    frame.grid(row=i, column=1, padx=10, pady=10, sticky="ew")
-                    frame.columnconfigure(0, weight=1)
-                    widget = ttk.Entry(frame, textvariable=var)
-                    widget.grid(row=0, column=0, sticky="ew")
-                    ttk.Button(frame, text="Browse...", command=lambda v=var: browse_media_file(v)).grid(row=0, column=1, padx=(5,0))
-                else:
-                    widget = ttk.Entry(editor, textvariable=var, width=60)
-                    widget.grid(row=i, column=1, padx=10, pady=10, sticky="ew")
+                widget = ttk.Entry(editor, textvariable=var, width=60)
+            widget.grid(row=i, column=1, padx=10, pady=10, sticky="ew")
             entries[field] = var
 
         editor.columnconfigure(1, weight=1)
