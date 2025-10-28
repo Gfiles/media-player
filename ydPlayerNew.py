@@ -33,7 +33,7 @@ from PIL import Image #pip install pillow
 import threading
 import ctypes
 
-VERSION = "2025.10.28"
+VERSION = datetime.now().strftime("%Y.%m.%d")
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -398,9 +398,14 @@ def on_exit(icon, item):
 	signal_handler(signal.SIGINT, None)
 
 def setup_tray_icon(icon_path):
+	title = f"ydPlayer v{VERSION}"
 	image = Image.open(icon_path)
-	menu = (item('Edit Settings', open_config_file), item('Exit', on_exit),)
-	tray_icon = icon("ydPlayer", image, "ydPlayer", menu)
+	menu = (
+		item(f"Version: {VERSION}", None, enabled=False),
+		item('Edit Settings', open_config_file), 
+		item('Exit', on_exit),
+	)
+	tray_icon = icon("ydPlayer", image, title, menu)
 	tray_icon.run()
 
 #---------- End Functions --------------

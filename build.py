@@ -7,7 +7,7 @@ import platform
 # --- Configuration ---
 # Import version from the main app to keep it in one place.
 #from ydPlayerNew import VERSION
-VERSION = "2025.10.28"
+VERSION = datetime.now().strftime("%Y.%m.%d")
 
 APP_NAME = "ydPlayer"
 DEVELOPER_NAME = "Gavin Goncalves"  # <-- IMPORTANT: Change this to your name/company
