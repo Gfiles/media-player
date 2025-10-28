@@ -365,14 +365,26 @@ def hide_console():
 			print(f"Error hiding console: {e}")
 
 def open_config_file():
-	"""Opens the configuration file in the default text editor."""
-	print(f"Opening settings file: {settingsFile}")
+	"""Launches the config_editor.py GUI application."""
+	editor_script = 'config_editor.py'
+	editor_exe_name = 'config_editor'
+	if OS == "Windows":
+		editor_exe_name += '.exe'
+
+	# Path for running from source vs. packaged
+	editor_path = os.path.join(cwd, editor_script)
+	editor_exe_path = os.path.join(cwd, editor_exe_name)
+
+	print("Attempting to open config editor...")
 	try:
-		if OS == "Windows":
-			os.startfile(settingsFile)
-		else: # For Linux and macOS
-			opener = "open" if OS == "Darwin" else "xdg-open"
-			subprocess.Popen([opener, settingsFile])
+		if os.path.exists(editor_exe_path):
+			print(f"Launching editor executable: {editor_exe_path}")
+			subprocess.Popen([editor_exe_path])
+		elif os.path.exists(editor_path):
+			print(f"Launching editor script: python {editor_path}")
+			subprocess.Popen([sys.executable, editor_path])
+		else:
+			print(f"Error: Could not find '{editor_exe_name}' or '{editor_script}' in {cwd}")
 	except Exception as e:
 		print(f"Error opening config file: {e}")
 
