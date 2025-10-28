@@ -156,19 +156,12 @@ def readConfig(settingsFile):
 		print(f"Config file {settingsFile} created with default values.")
 		try:
 			getInput = inputimeout(prompt="Do you want to edit the config file? (y/n): ", timeout=60)
-			print(f'You entered: {user_input}')
+			print(f'You entered: {getInput}')
 		except TimeoutOccurred:
 			print('Time is up! Continuing with the script...')
 			getInput = ""
 		if getInput.lower() == "y":
-			if OS == "Windows":
-				print("Opening config file in Notepad++")
-				programFiles = os.getenv("ProgramFiles", "C:\\Program Files")
-				notePadProgram = os.path.join(programFiles, "Notepad++", "notepad++.exe")
-				subprocess.Popen([notePadProgram, settingsFile])
-				
-			elif OS == "Linux":
-				subprocess.Popen(["geany", settingsFile])
+			open_config_file()
 			print("After editing, please restart the script.")
 			sys.exit(0)
 	return data
@@ -201,14 +194,18 @@ def getBackground():
 def installApps():
 	try:
 		#install mpv
-		print("Installing mpv")
 		if OS == "Windows":
-			subprocess.run(["winget", "install", "mpv", "--disable-interactivity", "--nowarn", "--accept-package-agreements", "--accept-source-agreements"])
-			subprocess.run(["winget", "install", "ffmpeg"])
-		if OS == "Linux":
-			subprocess.run(["sudo", "apt", "install", "mpv", "-y"])
-			subprocess.run(["sudo", "apt", "install", "feh", "-y"])
-		print("Installation of MPV complete")
+			if not shutil.which("mpv"):
+				print("Installing mpv")
+				subprocess.run(["winget", "install", "mpv", "--accept-package-agreements", "--accept-source-agreements"])
+			if not shutil.which("ffmpeg"):
+				print("Installing ffmpeg")
+				subprocess.run(["winget", "install", "ffmpeg", "--accept-package-agreements", "--accept-source-agreements"])
+		elif OS == "Linux":
+			if not shutil.which("mpv"):
+				subprocess.run(["sudo", "apt", "install", "mpv", "-y"])
+			if not shutil.which("feh"):
+				subprocess.run(["sudo", "apt", "install", "feh", "-y"])
 		return True
 	except:
 		print(f"problemas installing apps please install manually, exiting...")
@@ -386,6 +383,14 @@ def open_config_file():
 			print(f"Error: Could not find '{editor_exe_name}' or '{editor_script}' in {cwd}")
 	except Exception as e:
 		print(f"Error opening config file: {e}")
+		if OS == "Windows":
+			print("Opening config file in Notepad++")
+			programFiles = os.getenv("ProgramFiles", "C:\\Program Files")
+			notePadProgram = os.path.join(programFiles, "Notepad++", "notepad++.exe")
+			subprocess.Popen([notePadProgram, settingsFile])
+				
+		elif OS == "Linux":
+			subprocess.Popen(["geany", settingsFile])
 
 def on_exit(icon, item):
 	print("Exiting from tray icon...")
