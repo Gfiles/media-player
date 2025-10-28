@@ -374,11 +374,11 @@ def open_config_file():
 	print("Attempting to open config editor...")
 	try:
 		if os.path.exists(editor_exe_path):
-			print(f"Launching editor executable: {editor_exe_path}")
-			subprocess.Popen([editor_exe_path])
+			print(f"Launching editor executable: {editor_exe_path} with file {settingsFile}")
+			subprocess.Popen([editor_exe_path, settingsFile])
 		elif os.path.exists(editor_path):
-			print(f"Launching editor script: python {editor_path}")
-			subprocess.Popen([sys.executable, editor_path])
+			print(f"Launching editor script: python {editor_path} with file {settingsFile}")
+			subprocess.Popen([sys.executable, editor_path, settingsFile])
 		else:
 			print(f"Error: Could not find '{editor_exe_name}' or '{editor_script}' in {cwd}")
 	except Exception as e:
@@ -558,7 +558,7 @@ if len(localMedias) == 1:
 	playerIdle.append("--loop")
 	playerIdle.append(localMedias[0]) # Play first media as idle
 	print(f"Media Player Command: {playerIdle}")
-	player = subprocess.Popen(playerIdle)
+	player = subprocess.Popen(playerIdle, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 	# Hide console after starting the player
 	hide_console()
 elif playAllAtOnce:
@@ -571,7 +571,7 @@ elif playAllAtOnce:
 		player.append(media)
 		players.append(player)
 		print(player)
-		multiPlayers.append(subprocess.Popen(player))
+		multiPlayers.append(subprocess.Popen(player, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
 	# Hide console after starting the players
 	hide_console()
 else:
@@ -583,7 +583,7 @@ else:
 		playerIdle.append("--loop")
 		playerIdle.append(localMedias[0]) # Play first media as idle
 		print(f"Media Player Command: {playerIdle}")
-		player = subprocess.Popen(playerIdle)
+		player = subprocess.Popen(playerIdle, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		# Hide console after starting the player
 		hide_console()
 
@@ -597,12 +597,14 @@ print("Ready")
 try:
 	while running:
 		if len(localMedias) == 1:
+			if player.poll() is not None: # If player has terminated
+				player = subprocess.Popen(playerIdle, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 			time.sleep(1)
 		elif uartOn:
 			x=ser.readline().strip().decode()
 			try:
 				if player.poll() is not None:
-					player = subprocess.Popen(playerIdle)
+					player = subprocess.Popen(playerIdle, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 			except:
 				pass
 			if x.isnumeric():
@@ -620,20 +622,20 @@ try:
 				killProcess(newPlayer[0])
 				newPlayer.append(localMedias[xInt+1])
 				#print(f"Serial {xInt} : {localMedias[xInt]}")
-				player = subprocess.Popen(newPlayer)
+				player = subprocess.Popen(newPlayer, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		else:
 			for i, media in enumerate(localMedias):
 				if playAllAtOnce:
 					if multiPlayers[i].poll() is not None:
 						print(players[i])
-						multiPlayers[i] = subprocess.Popen(players[i])
+						multiPlayers[i] = subprocess.Popen(players[i], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 				else:
 					player_cmd = medias[i].get("mediaPlayer", "mpv").split()
 					if medias[i].get("audioOut", "auto") != "auto":
 						player_cmd.append(find_audio_devices(medias[i].get("audioOut", "auto")))
 					player_cmd.append(media)
 					print(player_cmd)
-					player_process = subprocess.Popen(player_cmd)
+					player_process = subprocess.Popen(player_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 					while player_process.poll() is None and running:
 						time.sleep(0.5) # Wait for player to finish or for exit signal
 			# Hide console after the first loop for non-serial, non-playAllAtOnce mode

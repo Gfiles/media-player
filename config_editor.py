@@ -4,9 +4,10 @@ import json
 import os
 import serial.tools.list_ports
 import subprocess
+import argparse
 
 class JsonEditorApp:
-    def __init__(self, root):
+    def __init__(self, root, file_to_load=None):
         self.root = root
         self.root.title("ydPlayer JSON Config Editor")
         self.root.geometry("800x600")
@@ -88,7 +89,11 @@ class JsonEditorApp:
         self.media_tree.bind("<Double-1>", self.edit_media_item)
 
         # --- Auto-load default file ---
-        self.auto_load_default()
+        if file_to_load and os.path.exists(file_to_load):
+            self.file_path.set(os.path.abspath(file_to_load))
+            self.load_data()
+        else:
+            self.auto_load_default()
 
     def populate_com_ports(self, combobox_widget):
         """Fetches available COM ports and populates the combobox."""
@@ -310,5 +315,9 @@ class MediaItemEditor(tk.Toplevel):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = JsonEditorApp(root)
+    parser = argparse.ArgumentParser(description="JSON Config Editor for ydPlayer")
+    parser.add_argument("file", nargs='?', default=None, help="Path to the JSON config file to load.")
+    args = parser.parse_args()
+
+    app = JsonEditorApp(root, file_to_load=args.file)
     root.mainloop()
