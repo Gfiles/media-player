@@ -7,12 +7,12 @@ import platform
 # --- Configuration ---
 # Import version from the main app to keep it in one place.
 #from ydPlayerNew import VERSION
-VERSION = "2025.10.20"
+VERSION = "2025.10.28"
 
 APP_NAME = "ydPlayer"
 DEVELOPER_NAME = "Gavin Goncalves"  # <-- IMPORTANT: Change this to your name/company
 MAIN_SCRIPT = "ydPlayerNew.py"
-FILE_DESCRIPTION = "media Player for playing audio or video files in loop or using buttons downloaded from link."
+FILE_DESCRIPTION = "ydPlayer"
 
 # --- Architecture-specific modifications ---
 machine_arch = platform.machine().lower()
@@ -26,12 +26,18 @@ elif sys.platform.startswith('linux') and machine_arch in ('x86_64', 'i686', 'x8
 # --- PyInstaller Build Command ---
 if sys.platform == 'win32':
     pyinstaller_command = [
-        '.venv\Scripts\pyinstaller', '--name', APP_NAME, '--onefile', '--clean', '--add-data', 'devcon.exe;.', 
+        'pyinstaller', '--name', APP_NAME, '--onefile', '--clean', '--add-data', 'devcon.exe;.', '--add-data', 'icon.png;.', '--icon=icon.png',
         MAIN_SCRIPT
     ]
+    """
+    pyinstaller_command = [
+        '.venv\Scripts\pyinstaller', '--name', APP_NAME, '--onefile', '--clean', '--add-data', 'devcon.exe;.', '--add-data', 'icon.png;.', '--icon=icon.png',
+        MAIN_SCRIPT
+    ]
+    """
 else:
     pyinstaller_command = [
-        '.venv/bin/pyinstaller', '--name', APP_NAME, '--onefile', '--clean',
+        '.venv/bin/pyinstaller', '--name', APP_NAME, '--onefile', '--clean', '--add-data', 'icon.png;.', '--icon=icon.png',
         MAIN_SCRIPT
     ]
 
@@ -81,7 +87,6 @@ VSVersionInfo(
         f.write(version_info_content)
     print(f"Generated '{version_file_path}' with version {VERSION}")
 
-    #pyinstaller_command.extend(['--windowed', '--version-file', version_file_path])
     pyinstaller_command.extend(['--version-file', version_file_path])
 else:
     print(f"{sys.platform} platform detected. Building standard executable.")

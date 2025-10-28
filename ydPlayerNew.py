@@ -28,8 +28,12 @@ import serial.tools.list_ports
 import random
 from urllib.parse import urlparse
 from inputimeout import inputimeout, TimeoutOccurred #pip install inputimeout
+from pystray import MenuItem as item, Icon as icon #pip install pystray
+from PIL import Image #pip install pillow
+import threading
+import ctypes
 
-VERSION = "2025.10.27"
+VERSION = "2025.10.28"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -170,13 +174,18 @@ def readConfig(settingsFile):
 	return data
 
 def killProcess(processName):
+	# Extract just the executable name if a path is provided
+	process_base_name = os.path.basename(processName)
 	if OS == "Windows":
-		subprocess.run(["taskkill", "/IM", processName, "/F"])
+		# Add .exe if not present for Windows taskkill
+		if not process_base_name.lower().endswith('.exe'):
+			process_base_name += '.exe'
+		subprocess.run(["taskkill", "/IM", process_base_name, "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 	if OS == "Linux":
-		if processName == "cvlc":
-			subprocess.run(["pkill", "vlc"])
+		if process_base_name == "cvlc":
+			subprocess.run(["pkill", "vlc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		else:
-			subprocess.run(["pkill", processName])
+			subprocess.run(["pkill", process_base_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def getBackground():
 	medias = config.get("medias", [])
@@ -296,13 +305,22 @@ def signal_handler(sig, frame):
 		print('Received Close signal')
 	else:
 		print('Received signal:', sig)
-	killProcess(medias[0].get("mediaPlayer", "mpv").split()[0])
+	global running
+	
+	# Kill all potential media player processes
+	killProcess("mpv")
+	killProcess("cvlc")
+	if tray_icon and tray_icon.visible:
+		tray_icon.stop()
 	if 'ser' in locals() and ser.is_open:
 		ser.close()
+	running = False
 	sys.exit(0)
     
 def randomize_medias():
 	# We shuffle the list of medias, but keep the first one (idle media) in place.
+	if len(localMedias) <= 1:
+		return
 	media_to_shuffle = localMedias[1:]
 	random.shuffle(media_to_shuffle)
 	localMedias[1:] = media_to_shuffle
@@ -336,6 +354,38 @@ def find_audio_devices(audioOut):
 	elif OS == "Linux":
 		audio_list = subprocess.Popen(["aplay", "-l"], stdout=subprocess.PIPE)
 
+def hide_console():
+	"""Hides the console window on Windows."""
+	if OS == "Windows":
+		try:
+			whnd = ctypes.windll.kernel32.GetConsoleWindow()
+			if whnd != 0:
+				ctypes.windll.user32.ShowWindow(whnd, 0) # 0 = SW_HIDE
+		except Exception as e:
+			print(f"Error hiding console: {e}")
+
+def open_config_file():
+	"""Opens the configuration file in the default text editor."""
+	print(f"Opening settings file: {settingsFile}")
+	try:
+		if OS == "Windows":
+			os.startfile(settingsFile)
+		else: # For Linux and macOS
+			opener = "open" if OS == "Darwin" else "xdg-open"
+			subprocess.Popen([opener, settingsFile])
+	except Exception as e:
+		print(f"Error opening config file: {e}")
+
+def on_exit(icon, item):
+	print("Exiting from tray icon...")
+	icon.stop()
+	signal_handler(signal.SIGINT, None)
+
+def setup_tray_icon(icon_path):
+	image = Image.open(icon_path)
+	menu = (item('Edit Settings', open_config_file), item('Exit', on_exit),)
+	tray_icon = icon("ydPlayer", image, "ydPlayer", menu)
+	tray_icon.run()
 
 #---------- End Functions --------------
 # Register the signal handler
@@ -364,6 +414,20 @@ if OS == "Windows":
 	killProcess("mpv.exe")
 if OS == "Linux":
 	killProcess("mpv")
+
+# --- Setup System Tray Icon ---
+tray_icon = None
+icon_path = os.path.join(bundle_dir, 'icon.png')
+if os.path.exists(icon_path):
+	print("Starting system tray icon...")
+	tray_thread = threading.Thread(target=setup_tray_icon, args=(icon_path,), daemon=True)
+	tray_thread.start()
+	# A small delay to allow the icon to initialize, especially on slower systems
+	time.sleep(1)
+else:
+	print(f"Warning: Icon file not found at '{icon_path}'. System tray icon will not be displayed.")
+	print("Please create an 'icon.png' file in the application directory.")
+
 
 #check for folders and create if necessary
 mediaFolder = os.path.join(cwd, "contents")
@@ -479,6 +543,8 @@ if len(localMedias) == 1:
 	playerIdle.append(localMedias[0]) # Play first media as idle
 	print(f"Media Player Command: {playerIdle}")
 	player = subprocess.Popen(playerIdle)
+	# Hide console after starting the player
+	hide_console()
 elif playAllAtOnce:
 	multiPlayers = list()
 	players = list()
@@ -490,6 +556,8 @@ elif playAllAtOnce:
 		players.append(player)
 		print(player)
 		multiPlayers.append(subprocess.Popen(player))
+	# Hide console after starting the players
+	hide_console()
 else:
 	print(f"localMedias: {localMedias}")
 	if (len(localMedias) > 0) and (uartOn):
@@ -500,6 +568,8 @@ else:
 		playerIdle.append(localMedias[0]) # Play first media as idle
 		print(f"Media Player Command: {playerIdle}")
 		player = subprocess.Popen(playerIdle)
+		# Hide console after starting the player
+		hide_console()
 
 playRandom = config.get("playRandom", False)
 if playRandom and len(localMedias) > 1:
@@ -542,18 +612,27 @@ try:
 						print(players[i])
 						multiPlayers[i] = subprocess.Popen(players[i])
 				else:
-					player = medias[i].get("mediaPlayer", "mpv").split()
+					player_cmd = medias[i].get("mediaPlayer", "mpv").split()
 					if medias[i].get("audioOut", "auto") != "auto":
-						player.append(find_audio_devices(medias[i].get("audioOut", "auto")))
-					player.append(media)
-					print(player)
-					subprocess.run(player)
+						player_cmd.append(find_audio_devices(medias[i].get("audioOut", "auto")))
+					player_cmd.append(media)
+					print(player_cmd)
+					player_process = subprocess.Popen(player_cmd)
+					while player_process.poll() is None and running:
+						time.sleep(0.5) # Wait for player to finish or for exit signal
+			# Hide console after the first loop for non-serial, non-playAllAtOnce mode
+			hide_console()
 			if playRandom:
 				randomize_medias()
+		time.sleep(0.1) # Small sleep to prevent high CPU usage if not in a blocking call
 			
 except KeyboardInterrupt:
 	print("\nExiting on user request.")
 	if 'ser' in locals() and ser.is_open:
 		ser.close()
-	killProcess(medias[0].get("mediaPlayer", "mpv").split()[0])
+	if tray_icon and tray_icon.visible:
+		tray_icon.stop()
+	# Kill all potential media player processes
+	killProcess("mpv")
+	killProcess("cvlc")
 	sys.exit(0)
