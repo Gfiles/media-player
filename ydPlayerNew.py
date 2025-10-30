@@ -573,10 +573,12 @@ elif playAllAtOnce:
 		player = medias[i].get("mediaPlayer", "mpv").split()
 		if medias[i].get("audioOut", "auto") != "auto":
 			player.append(find_audio_devices(medias[i].get("audioOut", "auto")))
+		player.append("--loop")
 		player.append(media)
 		players.append(player)
 		print(player)
 		multiPlayers.append(subprocess.Popen(player, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+		time.sleep(0.5) # Small delay to prevent overload
 	# Hide console after starting the players
 	hide_console()
 else:
