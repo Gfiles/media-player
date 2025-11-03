@@ -33,7 +33,7 @@ from PIL import Image #pip install pillow
 import threading
 import ctypes
 
-VERSION = datetime.now().strftime("%Y.%m.%d")
+VERSION = "2025.01.15"
 print(f"Version : {VERSION}")
 
 def download_and_replace(download_url):
@@ -106,35 +106,26 @@ def readConfig(settingsFile):
 				print('Time is up! Continuing with the script...')
 			sys.exit(0)
 
-		if OS == "Windows":
+		# --- Architecture-specific modifications ---
+		machine_arch = platform.machine().lower()
+		if sys.platform.startswith('win'):
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
 			mediaPlayer = "mpv.exe -fs --volume=100 --osc=no --title=mpvPlay"
-			data = {
-				"uart" : "auto",
-				"useSerial" : False,
-				"baudrate" : 9600,
-				"usbName" : "CH340",
-				"arduinoDriver" : "USB\\VID_1A86&PID_7523",
-				"updateApp" : updateApp,
-				"playAllAtOnce" : False,
-				"playRandom" : False,
-				"medias": [
-					{
-						"mediaPlayer": mediaPlayer,
-						"audioOut" : "auto",
-						"fileUrl": "https://proj.ydreams.global/ydreams/videos/no_app.mp4",
-						"lastModified": ""
-					}
-				]
-			}
-		elif OS == "Linux":
+			usbName = "CH340"
+		elif machine_arch in ('aarch64', 'arm64'):
 			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
 			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
-			data = {
+			usbName = "USB"
+		elif sys.platform.startswith('linux') and machine_arch in ('x86_64', 'i686', 'x86'):
+			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_deb"
+			mediaPlayer = "mpv.exe -fs --volume=100 --osc=no --title=mpvPlay"
+			usbName = "USB"
+
+		data = {
 				"uart" : "auto",
 				"useSerial" : False,
 				"baudrate" : 9600,
-				"usbName" : "USB",
+				"usbName" : usbName,
 				"updateApp" : updateApp,
 				"playAllAtOnce" : False,
 				"playRandom" : False,
@@ -147,6 +138,9 @@ def readConfig(settingsFile):
 					}
 				]
 			}
+		if sys.platform.startswith('win'):
+			data["arduinoDriver"] = "USB\\VID_1A86&PID_7523"
+			
 		# Serializing json
 		json_object = json.dumps(data, indent=4)
  
