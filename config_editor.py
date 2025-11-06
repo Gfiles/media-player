@@ -1,4 +1,4 @@
-# pyinstaller --onefile --clean --icon=icon.png config_editor.py
+# pyinstaller --onefile --clean --icon=icon.png -n config_editor_arm64 config_editor.py
 import platform
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -253,7 +253,10 @@ class JsonEditorApp:
 
     def add_media_item(self):
         """Add a new blank item to the media list."""
-        new_item_values = ("mpv.exe -fs --volume=100 --osc=no --title=mpvPlay", "auto", "")
+        if OS == "Rasp-Pi":
+            new_item_values = ("cvlc -f --no-osd --play-and-exit -q", "auto", "")
+        else:
+            new_item_values = ("mpv.exe -fs --volume=100 --osc=no --title=mpvPlay", "auto", "")
         self.media_tree.insert("", "end", values=new_item_values)
         self.edit_media_item(event=None, new_item=True)
 
@@ -385,10 +388,15 @@ class JsonEditorApp:
         try:
             use_serial = self.general_widgets["useSerial"][1].get()
             state = "normal" if use_serial else "disabled"
+            if OS == "Windows":
+                for field in ["uart", "baudrate", "usbName", "arduinoDriver"]:
+                    # The widget is the first element in the tuple
+                    self.general_widgets[field][0].config(state=state)
+            else:
+                for field in ["uart", "baudrate", "usbName"]:
+                    # The widget is the first element in the tuple
+                    self.general_widgets[field][0].config(state=state)
 
-            for field in ["uart", "baudrate", "usbName", "arduinoDriver"]:
-                # The widget is the first element in the tuple
-                self.general_widgets[field][0].config(state=state)
         except KeyError as e:
             print(f"Warning: Widget key not found during toggle: {e}")
 
