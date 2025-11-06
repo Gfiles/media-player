@@ -9,9 +9,9 @@ BackOffice Variables:
 	aplay -l to get list of audio devices
 	aplay -Dplughw:2,0
 Windows:
-	.venv\Scripts\pyinstaller --onefile --add-data "devcon.exe;." -n ydPlayer ydPlayerNew.py
+	.venv\Scripts\pyinstaller --onefile --add-data "devcon.exe;." -n ydPlayer ydPlayer.py
 Rasp Pi:
-	.venv/bin/pyinstaller --onefile -n ydPlayerBtns_arm64 ydPlayerNew.py
+	.venv/bin/pyinstaller --onefile -n ydPlayerBtns_arm64 ydPlayer.py
 """
 import mimetypes
 import subprocess
@@ -28,23 +28,54 @@ import serial.tools.list_ports
 import random
 from urllib.parse import urlparse
 from inputimeout import inputimeout, TimeoutOccurred #pip install inputimeout
-from pystray import MenuItem as item, Icon as icon #pip install pystray
 from PIL import Image #pip install pillow
 import threading
 import ctypes
 
-VERSION = "2025.01.15"
+#----- Configuration Variables -----
+VERSION = "2025.11.06"
 print(f"Version : {VERSION}")
+OS = platform.system()
+machine_arch = platform.machine().lower()
+if OS == "Linux":
+    if machine_arch in ('aarch64', 'arm64'):
+        OS = "Rasp-Pi"
+print(f"OS: {OS}")
 
+if OS == "Windows":
+	from pystray import MenuItem as item, Icon as icon #pip install pystray
+
+#---------- Reusable Functions ----------
+def download_file_with_progress(url, destination_path):
+    """Downloads a file from a URL to a destination, showing a progress bar."""
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        total_size = int(response.headers.get('content-length', 0))
+        
+        with open(destination_path, 'wb') as f:
+            downloaded_size = 0
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+                downloaded_size += len(chunk)
+                done = int(50 * downloaded_size / total_size) if total_size > 0 else 0
+                sys.stdout.write(f'\r[{"#" * done}{"-" * (50 - done)}] {downloaded_size / 1048576:.2f} MB / {total_size / 1048576:.2f} MB')
+                sys.stdout.flush()
+        print(f"\nDownloaded {os.path.basename(destination_path)} successfully.")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"\nError downloading {url}: {e}")
+        return False
+
+#---------- Functions --------------
 def download_and_replace(download_url):
 	global OS
 	exe_path = sys.argv[0]
 	tmp_path = exe_path + ".new"
 	print(f"Downloading update from {download_url} ...")
-	r = requests.get(download_url, stream=True)
-	with open(tmp_path, "wb") as f:
-		shutil.copyfileobj(r.raw, f)
-	print("Download complete.")
+	if not download_file_with_progress(download_url, tmp_path):
+		print("Update failed. Could not download the new version.")
+		return
 	# Create a batch file to replace the running exe after exit
 	if OS == "Windows":
 		bat_path = exe_path + ".bat"
@@ -58,7 +89,7 @@ del "%~f0"
 		print("Restarting with update...")
 		os.startfile(bat_path)
 
-	if OS == "Linux":
+	else:
 		bat_path = exe_path + ".sh"
 		with open(bat_path, "w") as bat:
 			bat.write(f"""#!/bin/bash
@@ -96,28 +127,42 @@ def readConfig(settingsFile):
 	else:
 		#Teste if mpv Exists
 		installApps()
+		#Download respective config_editor files
+		if OS == "Windows":
+			editor_url = "http://proj.ydreams.global/ydreams/apps/ydPlayer/config_editor.exe"
+			editor_exe_path = os.path.join(cwd, "config_editor.exe")
+			download_file_with_progress(editor_url, editor_exe_path)
+		elif OS == "Rasp-Pi":
+			editor_url = "http://proj.ydreams.global/ydreams/apps/ydPlayer/config_editor_arm64"
+			editor_exe_path = os.path.join(cwd, "config_editor")
+			download_file_with_progress(editor_url, editor_exe_path)
+			subprocess.run(["chmod", "+x", "config_editor"])
+		else:
+			editor_url = "http://proj.ydreams.global/ydreams/apps/ydPlayer/config_editor_deb"
+			editor_exe_path = os.path.join(cwd, "config_editor")
+			download_file_with_progress(editor_url, editor_exe_path)
+			subprocess.run(["chmod", "+x", "config_editor"])
+		
 		try:
 			videoPlaying = subprocess.run(["mpv"], stdout = subprocess.DEVNULL) #do not show output
 		except FileNotFoundError:
 			try:
 				user_input = inputimeout(prompt="mpv not installed, Please install manually, exiting...", timeout=60)
-				print(f'You entered: {user_input}')
 			except TimeoutOccurred:
 				print('Time is up! Continuing with the script...')
 			sys.exit(0)
 
 		# --- Architecture-specific modifications ---
-		machine_arch = platform.machine().lower()
-		if sys.platform.startswith('win'):
-			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe"
+		if OS == "Windows":
+			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer/ydPlayer.exe"
 			mediaPlayer = "mpv.exe -fs --volume=100 --osc=no --title=mpvPlay"
 			usbName = "CH340"
-		elif machine_arch in ('aarch64', 'arm64'):
-			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_arm64"
+		elif OS == "Rasp-Pi":
+			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer/ydPlayer_arm64"
 			mediaPlayer = "cvlc -f --no-osd --play-and-exit -q"
 			usbName = "USB"
-		elif sys.platform.startswith('linux') and machine_arch in ('x86_64', 'i686', 'x86'):
-			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer_deb"
+		else:
+			updateApp = "https://proj.ydreams.global/ydreams/apps/ydPlayer/ydPlayer_deb"
 			mediaPlayer = "mpv.exe -fs --volume=100 --osc=no --title=mpvPlay"
 			usbName = "USB"
 
@@ -138,7 +183,7 @@ def readConfig(settingsFile):
 					}
 				]
 			}
-		if sys.platform.startswith('win'):
+		if OS == "Windows":
 			data["arduinoDriver"] = "USB\\VID_1A86&PID_7523"
 			
 		# Serializing json
@@ -168,11 +213,13 @@ def killProcess(processName):
 		if not process_base_name.lower().endswith('.exe'):
 			process_base_name += '.exe'
 		subprocess.run(["taskkill", "/IM", process_base_name, "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-	if OS == "Linux":
+	elif OS == "Rasp-Pi":
 		if process_base_name == "cvlc":
 			subprocess.run(["pkill", "vlc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		else:
 			subprocess.run(["pkill", process_base_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	else:
+		subprocess.run(["pkill", process_base_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def getBackground():
 	medias = config.get("medias", [])
@@ -195,7 +242,7 @@ def installApps():
 			if not shutil.which("ffmpeg"):
 				print("Installing ffmpeg")
 				subprocess.run(["winget", "install", "ffmpeg", "--accept-package-agreements", "--accept-source-agreements"])
-		elif OS == "Linux":
+		else:
 			if not shutil.which("mpv"):
 				subprocess.run(["sudo", "apt", "install", "mpv", "-y"])
 			if not shutil.which("feh"):
@@ -244,19 +291,8 @@ def downloadContents():
 		if mediaDate != "No Last-Modified header found." and mediaDate != mediaLastModified:
 			downLoadFile = True
 		if downLoadFile:
-			print("Downloading Contents")
-			r = requests.get(mediaurl, stream=True)
-			totalSize = int(r.headers.get('content-length', 0))
-			downloadedSize = 0
-			with open(filePath, 'wb') as f:
-				for chunk in r.iter_content(chunk_size=8192):
-					f.write(chunk)
-					downloadedSize += len(chunk)
-					done = int(50 * downloadedSize / totalSize)
-					sys.stdout.write(f'\r[{"#" * done}{"-" * (50 - done)}] {downloadedSize / 1048576:.2f} MB / {totalSize / 1048576:.2f} MB')
-					sys.stdout.flush()
-			print(f"Downloaded {fileName} to {filePath}")
-			media["lastModified"] = mediaDate
+			if download_file_with_progress(mediaurl, filePath):
+				media["lastModified"] = mediaDate
 		else:
 			print(f"Media up to date")
 
@@ -301,8 +337,9 @@ def signal_handler(sig, frame):
 	# Kill all potential media player processes
 	killProcess("mpv")
 	killProcess("cvlc")
-	if tray_icon and tray_icon.visible:
-		tray_icon.stop()
+	if OS == "Windows":
+		if tray_icon and tray_icon.visible:
+			tray_icon.stop()
 	if 'ser' in locals() and ser.is_open:
 		ser.close()
 	running = False
@@ -342,7 +379,7 @@ def find_audio_devices(audioOut):
 				get_device = list(find_all(new, "'"))
 				return f"--audio-device={new[get_device[0]+1:get_device[1]]}"
 		
-	elif OS == "Linux":
+	else:
 		audio_list = subprocess.Popen(["aplay", "-l"], stdout=subprocess.PIPE)
 
 def hide_console():
@@ -357,24 +394,18 @@ def hide_console():
 
 def open_config_file():
 	"""Launches the config_editor.py GUI application."""
-	editor_script = 'config_editor.py'
 	if OS == "Windows":
-		editor_exe_name = os.path.join(bundle_dir, "config_editor.exe")
-
-	# Path for running from source vs. packaged
-	editor_path = os.path.join(cwd, editor_script)
-	editor_exe_path = os.path.join(cwd, editor_exe_name)
-
+		editor_exe_path = os.path.join(cwd, "config_editor.exe")
+	else:
+		editor_exe_path = os.path.join(cwd, "config_editor")
+	
 	print("Attempting to open config editor...")
 	try:
 		if os.path.exists(editor_exe_path):
 			print(f"Launching editor executable: {editor_exe_path} with file {settingsFile}")
 			subprocess.Popen([editor_exe_path, settingsFile])
-		elif os.path.exists(editor_path):
-			print(f"Launching editor script: python {editor_path} with file {settingsFile}")
-			subprocess.Popen([sys.executable, editor_path, settingsFile])
 		else:
-			print(f"Error: Could not find '{editor_exe_name}' or '{editor_script}' in {cwd}")
+			print(f"Error: Could not find '{editor_exe_path}' in {cwd}")
 	except Exception as e:
 		print(f"Error opening config file: {e}")
 		if OS == "Windows":
@@ -382,13 +413,13 @@ def open_config_file():
 			programFiles = os.getenv("ProgramFiles", "C:\\Program Files")
 			notePadProgram = os.path.join(programFiles, "Notepad++", "notepad++.exe")
 			subprocess.Popen([notePadProgram, settingsFile])
-				
-		elif OS == "Linux":
+		else:
 			subprocess.Popen(["geany", settingsFile])
 
 def on_exit(icon, item):
 	print("Exiting from tray icon...")
-	icon.stop()
+	if OS == "Windows":
+		icon.stop()
 	signal_handler(signal.SIGINT, None)
 
 def setup_tray_icon(icon_path):
@@ -423,25 +454,25 @@ else:
 	bundle_dir = os.path.dirname(os.path.abspath(__file__))
 
 print("Current working directory:", cwd)
-OS = platform.system()
-print(f"Operating System: {OS}")
 if OS == "Windows":
 	killProcess("mpv.exe")
-if OS == "Linux":
-	killProcess("mpv")
-
-# --- Setup System Tray Icon ---
-tray_icon = None
-icon_path = os.path.join(bundle_dir, 'icon.png')
-if os.path.exists(icon_path):
-	print("Starting system tray icon...")
-	tray_thread = threading.Thread(target=setup_tray_icon, args=(icon_path,), daemon=True)
-	tray_thread.start()
-	# A small delay to allow the icon to initialize, especially on slower systems
-	time.sleep(1)
 else:
-	print(f"Warning: Icon file not found at '{icon_path}'. System tray icon will not be displayed.")
-	print("Please create an 'icon.png' file in the application directory.")
+	killProcess("mpv")
+	killProcess("vlc")
+
+if OS == "Windows":
+	# --- Setup System Tray Icon ---
+	tray_icon = None
+	icon_path = os.path.join(bundle_dir, 'icon.png')
+	if os.path.exists(icon_path):
+		print("Starting system tray icon...")
+		tray_thread = threading.Thread(target=setup_tray_icon, args=(icon_path,), daemon=True)
+		tray_thread.start()
+		# A small delay to allow the icon to initialize, especially on slower systems
+		time.sleep(1)
+	else:
+		print(f"Warning: Icon file not found at '{icon_path}'. System tray icon will not be displayed.")
+		print("Please create an 'icon.png' file in the application directory.")
 
 
 #check for folders and create if necessary
@@ -460,9 +491,12 @@ useSerial = bool(config.get("useSerial", False))
 usbName = config.get("usbName", "CH340")
 arduinoDriver = config.get("arduinoDriver", "USB\\VID_1A86&PID_7523")
 if OS == "Linux":
-	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer")
+	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer/ydPlayer_deb")
 elif OS == "Windows":
-	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer.exe")
+	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer/ydPlayer.exe")
+else:
+	NEW_APP = config.get("updateApp", "https://proj.ydreams.global/ydreams/apps/ydPlayer/ydPlayer_arm64")
+
 medias = config.get("medias", [])
 
 if check_internet(NEW_APP):
@@ -649,9 +683,10 @@ except KeyboardInterrupt:
 	print("\nExiting on user request.")
 	if 'ser' in locals() and ser.is_open:
 		ser.close()
-	if tray_icon and tray_icon.visible:
-		tray_icon.stop()
+	if OS == "Windows":
+		if tray_icon and tray_icon.visible:
+			tray_icon.stop()
 	# Kill all potential media player processes
 	killProcess("mpv")
-	killProcess("cvlc")
+	killProcess("vlc")
 	sys.exit(0)

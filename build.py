@@ -3,6 +3,7 @@ import subprocess
 from datetime import datetime
 import sys
 import platform
+import re
 
 # --- Configuration ---
 # Import version from the main app to keep it in one place.
@@ -56,8 +57,8 @@ if sys.platform == 'win32':
         '--clean', 
         '--add-data', 'devcon.exe;.', 
         '--add-data', 'icon.png;.',
-        '--add-data', 'dist/config_editor.exe;.',
         '--icon=icon.png',
+        '--uac-admin',
         MAIN_SCRIPT
     ]
     """
@@ -68,10 +69,10 @@ if sys.platform == 'win32':
     """
 else:
     pyinstaller_command = [
-        '.venv/bin/pyinstaller', 
+        'pyinstaller', 
         '--name', APP_NAME, 
         '--onefile', 
-        '--clean', 
+        '--clean',
         '--icon=icon.png',
         MAIN_SCRIPT
     ]

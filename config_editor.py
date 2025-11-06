@@ -1,3 +1,5 @@
+# pyinstaller --onefile --clean --icon=icon.png config_editor.py
+import platform
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import json
@@ -5,6 +7,13 @@ import os
 import serial.tools.list_ports
 import subprocess
 import argparse
+
+OS = platform.system()
+machine_arch = platform.machine().lower()
+if OS == "Linux":
+    if machine_arch in ('aarch64', 'arm64'):
+        OS = "Rasp-Pi"
+print(f"OS: {OS}")
 
 class JsonEditorApp:
     def __init__(self, root, file_to_load=None):
@@ -23,9 +32,27 @@ class JsonEditorApp:
         self.notebook = ttk.Notebook(root, padding="10")
         self.notebook.pack(expand=True, fill="both")
 
+        # --- Help/Info Box ---
+        info_frame = ttk.LabelFrame(root, text="Information", padding="10")
+        info_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=(0, 10))
+
+        self.info_text = tk.Text(info_frame, height=4, wrap="word", state="disabled", background=root.cget('bg'), relief=tk.FLAT)
+        self.info_text.pack(fill=tk.X, expand=True)
+
         self.general_tab = ttk.Frame(self.notebook)
         self.serial_tab = ttk.Frame(self.notebook)
         self.media_tab = ttk.Frame(self.notebook)
+
+        self.help_texts = {
+            "updateApp": "The URL to the application executable for automatic updates. The application will check this link on startup.",
+            "playAllAtOnce": "If checked, all media files in the list will be played simultaneously, each in its own player instance.",
+            "playRandom": "If checked, the media files (except the first one, which is the idle video) will be played in a random order when triggered.",
+            "useSerial": "Enable or disable serial communication (e.g., for Arduino or button input). This enables the fields below.",
+            "uart": "The COM port for the serial device. 'auto' will attempt to find the device specified in 'usbName'.",
+            "baudrate": "The communication speed for the serial port (bits per second). Must match the device's setting.",
+            "usbName": "A unique part of the serial device's name used for auto-detection when 'uart' is set to 'auto'.",
+            "arduinoDriver": "The hardware ID of the Arduino driver, used on Windows to automatically restart the driver if a permission error occurs."
+        }
 
         self.notebook.add(self.general_tab, text='General')
         self.notebook.add(self.media_tab, text='Media List')
@@ -38,7 +65,10 @@ class JsonEditorApp:
 
         # --- General Settings Tab ---
         self.general_widgets = {}
-        general_fields = ["updateApp", "playAllAtOnce", "playRandom", "useSerial", "uart", "baudrate", "usbName", "arduinoDriver"]
+        if OS == "Windows":
+            general_fields = ["updateApp", "playAllAtOnce", "playRandom", "useSerial", "uart", "baudrate", "usbName", "arduinoDriver"]
+        else:
+            general_fields = ["updateApp", "playAllAtOnce", "playRandom", "useSerial", "uart", "baudrate", "usbName"]
         for i, field in enumerate(general_fields):
             ttk.Label(self.general_tab, text=f"{field}:").grid(row=i, column=0, padx=5, pady=5, sticky="w")
             
@@ -48,7 +78,7 @@ class JsonEditorApp:
 
             if field == "useSerial":
                 var = tk.BooleanVar()
-                widget = ttk.Checkbutton(widget_frame, variable=var)
+                widget = ttk.Checkbutton(widget_frame, variable=var, command=self.toggle_serial_widgets)
             elif field == "playAllAtOnce":
                 var = tk.BooleanVar()
                 widget = ttk.Checkbutton(widget_frame, variable=var)
@@ -69,8 +99,14 @@ class JsonEditorApp:
             else:
                 var = tk.StringVar()
                 widget = ttk.Entry(widget_frame, textvariable=var, width=60)
+
             widget.grid(row=0, column=0, sticky="w")
             self.general_widgets[field] = (widget, var)
+
+            # Bind hover events for showing help text
+            widget.bind("<Enter>", lambda event, f=field: self.on_widget_enter(event, f))
+            widget.bind("<Leave>", self.on_widget_leave)
+
         self.general_tab.columnconfigure(1, weight=1)
 
 
@@ -84,9 +120,18 @@ class JsonEditorApp:
         self.media_tree = ttk.Treeview(self.media_tab, columns=cols, show='headings', selectmode='browse')
         for col in cols:
             self.media_tree.heading(col, text=col.capitalize())
-            self.media_tree.column(col, width=200)
+            if col == "audioOut":
+                self.media_tree.column(col, width=100, stretch=tk.NO) # Make this column smaller and fixed width
+            elif col == "fileUrl":
+                self.media_tree.column(col, width=350)
+            else:
+                self.media_tree.column(col, width=250)
         self.media_tree.pack(expand=True, fill="both")
         self.media_tree.bind("<Double-1>", self.edit_media_item)
+        
+        # Bind hover events for the media list itself
+        self.media_tree.bind("<Enter>", self.on_media_list_enter)
+        self.media_tree.bind("<Leave>", self.on_widget_leave) # Re-use the leave handler
 
         # --- Auto-load default file ---
         if file_to_load and os.path.exists(file_to_load):
@@ -94,6 +139,28 @@ class JsonEditorApp:
             self.load_data()
         else:
             self.auto_load_default()
+
+    def on_widget_enter(self, event, field_name):
+        """Display help text when the mouse enters a widget."""
+        info = self.help_texts.get(field_name, "No information available for this setting.")
+        self.info_text.config(state="normal")
+        self.info_text.delete("1.0", tk.END)
+        self.info_text.insert("1.0", info)
+        self.info_text.config(state="disabled")
+
+    def on_widget_leave(self, event):
+        """Clear the help text when the mouse leaves a widget."""
+        self.info_text.config(state="normal")
+        self.info_text.delete("1.0", tk.END)
+        self.info_text.config(state="disabled")
+
+    def on_media_list_enter(self, event):
+        """Display help text for the media list Treeview."""
+        info = "This is the list of media files. Double-click any item to open the editor for that item."
+        self.info_text.config(state="normal")
+        self.info_text.delete("1.0", tk.END)
+        self.info_text.insert("1.0", info)
+        self.info_text.config(state="disabled")
 
     def populate_com_ports(self, combobox_widget):
         """Fetches available COM ports and populates the combobox."""
@@ -137,6 +204,8 @@ class JsonEditorApp:
                 value = self.config_data.get(field)
                 if value is not None:
                     var.set(value)
+
+            self.toggle_serial_widgets() # Set initial state of serial widgets
 
             # Populate Media Tree
             self.media_tree.delete(*self.media_tree.get_children())
@@ -212,10 +281,29 @@ class JsonEditorApp:
         # Create a Toplevel window for editing
         editor = tk.Toplevel(self.root)
         editor.title("Edit Media Item")
-        editor.geometry("500x200")
+        editor.geometry("600x300")
 
         fields = ["mediaPlayer", "audioOut", "fileUrl"]
         entries = {}
+
+        media_help_texts = {
+            "mediaPlayer": "The command-line instruction to launch the media player (e.g., 'mpv.exe -fs --volume=100 --osc=no --title=mpvPlay' for Windows or 'cvlc -f --no-osd --play-and-exit -q' for Raspberry Pi). ",
+            "audioOut": "The name of the audio output device. Normally used with multiple audio devices",
+            "fileUrl": "The local path or web URL for the media file. Use the 'Browse...' button to select a local file."
+        }
+
+        def on_editor_widget_enter(event, field_name):
+            info = media_help_texts.get(field_name, "No information available.")
+            info_text.config(state="normal")
+            info_text.delete("1.0", tk.END)
+            info_text.insert("1.0", info)
+            info_text.config(state="disabled")
+
+        def on_editor_widget_leave(event):
+            info_text.config(state="normal")
+            info_text.delete("1.0", tk.END)
+            info_text.config(state="disabled")
+
 
         def get_audio_devices():
             """Gets a list of audio device names from mpv."""
@@ -250,18 +338,23 @@ class JsonEditorApp:
         for i, field in enumerate(fields):
             ttk.Label(editor, text=f"{field.capitalize()}:").grid(row=i, column=0, padx=10, pady=10, sticky="w")
             var = tk.StringVar(value=item_values[i])
+            
+            widget_frame = ttk.Frame(editor)
+            widget_frame.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
+
             if field == "audioOut":
-                widget = ttk.Combobox(editor, textvariable=var, width=58)
+                widget = ttk.Combobox(widget_frame, textvariable=var)
                 widget['values'] = get_audio_devices()
             elif field == "fileUrl":
-                widget = ttk.Entry(editor, textvariable=var)
-                ttk.Button(editor, text="Browse...", command=lambda v=var: browse_media_file(v)).grid(row=2, column=2, padx=(5, 15))
+                widget = ttk.Entry(widget_frame, textvariable=var)
+                ttk.Button(widget_frame, text="Browse...", command=lambda v=var: browse_media_file(v)).pack(side=tk.RIGHT, padx=(5,0))
             else:
-                widget = ttk.Entry(editor, textvariable=var, width=60)
-            widget.grid(row=i, column=1, padx=10, pady=10, sticky="ew")
+                widget = ttk.Entry(widget_frame, textvariable=var)
+            
+            widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            widget.bind("<Enter>", lambda event, f=field: on_editor_widget_enter(event, f))
+            widget.bind("<Leave>", on_editor_widget_leave)
             entries[field] = var
-
-        editor.columnconfigure(1, weight=1)
 
         def on_save():
             new_values = (
@@ -273,12 +366,31 @@ class JsonEditorApp:
             editor.destroy()
 
         save_button = ttk.Button(editor, text="Save", command=on_save)
-        save_button.grid(row=len(fields), column=0, columnspan=2, pady=10)
+        save_button.grid(row=len(fields), column=0, columnspan=2, pady=10, sticky="ew", padx=10)
 
+        # --- Help/Info Box for Editor ---
+        info_frame = ttk.LabelFrame(editor, text="Information", padding="10")
+        info_frame.grid(row=len(fields) + 1, column=0, columnspan=2, sticky="ew", padx=10, pady=(0, 10))
+        info_text = tk.Text(info_frame, height=3, wrap="word", state="disabled", background=editor.cget('bg'), relief=tk.FLAT)
+        info_text.pack(fill=tk.X, expand=True)
+
+        editor.columnconfigure(1, weight=1)
         editor.transient(self.root)
         editor.grab_set()
         self.root.wait_window(editor)
 
+
+    def toggle_serial_widgets(self, *args):
+        """Enable or disable serial-related widgets based on the useSerial checkbox."""
+        try:
+            use_serial = self.general_widgets["useSerial"][1].get()
+            state = "normal" if use_serial else "disabled"
+
+            for field in ["uart", "baudrate", "usbName", "arduinoDriver"]:
+                # The widget is the first element in the tuple
+                self.general_widgets[field][0].config(state=state)
+        except KeyError as e:
+            print(f"Warning: Widget key not found during toggle: {e}")
 
 class MediaItemEditor(tk.Toplevel):
     def __init__(self, parent, item_data, on_save_callback):
