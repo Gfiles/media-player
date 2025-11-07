@@ -128,6 +128,7 @@ def readConfig(settingsFile):
 		#Teste if mpv Exists
 		installApps()
 		#Download respective config_editor files
+		print("Downloading config editor...")
 		if OS == "Windows":
 			editor_url = "http://proj.ydreams.global/ydreams/apps/ydPlayer/config_editor.exe"
 			editor_exe_path = os.path.join(cwd, "config_editor.exe")
