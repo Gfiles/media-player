@@ -293,10 +293,10 @@ def downloadContents():
 		if downLoadFile:
 			if download_file_with_progress(mediaurl, filePath):
 				media["lastModified"] = mediaDate
+				saveConfigFile(settingsFile, config)
 		else:
 			print(f"Media up to date")
 
-	saveConfigFile(settingsFile, config)
 	print("Finished Downloading")
 
 def check_file_type(file_path):
@@ -651,6 +651,8 @@ try:
 						randomize_medias()
 				else:
 					xInt = int(x)
+					if xInt >= len(localMedias):
+						xInt = len(localMedias) - 1
 				newPlayer = medias[xInt+1].get("mediaPlayer", "mpv").split()
 				if medias[xInt+1].get("audioOut", "auto") != "auto":
 					newPlayer.append(find_audio_devices(medias[xInt+1].get("audioOut", "auto")))
