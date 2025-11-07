@@ -336,7 +336,8 @@ def signal_handler(sig, frame):
 	
 	# Kill all potential media player processes
 	killProcess("mpv")
-	killProcess("cvlc")
+	killProcess("vlc")
+	killProcess("feh")
 	if OS == "Windows":
 		if tray_icon and tray_icon.visible:
 			tray_icon.stop()
@@ -571,7 +572,7 @@ for filePath in localMediasCopy:
 		localMedias.append(filePath)
 
 #Play background image
-if OS == "Linux":
+if OS != "Windows":
 	backGroundFile = getBackground()
 	if backGroundFile:
 		print(f"Background file: {backGroundFile}")
@@ -580,7 +581,6 @@ if OS == "Linux":
 		backGroundPlayer.append(backGroundFile)
 		print(f"Media Player Command: {backGroundPlayer}")
 		subprocess.Popen(backGroundPlayer, stdout = subprocess.DEVNULL)
-
 
 playAllAtOnce = config.get("playAllAtOnce", False)
 #Create players Processes
@@ -691,4 +691,5 @@ except KeyboardInterrupt:
 	# Kill all potential media player processes
 	killProcess("mpv")
 	killProcess("vlc")
+	killProcess("feh")
 	sys.exit(0)
