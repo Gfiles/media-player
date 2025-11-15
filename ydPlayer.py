@@ -654,9 +654,9 @@ try:
 					xInt = int(x)
 					if xInt >= len(localMedias):
 						xInt = len(localMedias) - 1
-				newPlayer = medias[xInt+1].get("mediaPlayer", "mpv").split()
+				newPlayer = medias[xInt].get("mediaPlayer", "mpv").split()
 				if medias[xInt+1].get("audioOut", "auto") != "auto":
-					newPlayer.append(find_audio_devices(medias[xInt+1].get("audioOut", "auto")))
+					newPlayer.append(find_audio_devices(medias[xInt].get("audioOut", "auto")))
 				killProcess(newPlayer[0])
 				newPlayer.append(localMedias[xInt+1])
 				#print(f"Serial {xInt} : {localMedias[xInt]}")
